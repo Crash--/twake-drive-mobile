@@ -1,0 +1,43 @@
+{
+  "common": {
+    "close": "Close",
+    "retry": "Retry",
+    "loading": "Loading…",
+    "logout": "Log out"
+  },
+  "auth": {
+    "welcomeTitle": "Welcome to Twake Drive",
+    "welcomeSubtitle": "Your files, everywhere, safely.",
+    "loginCta": "Log in",
+    "emailLabel": "Email address",
+    "emailPlaceholder": "you@example.com",
+    "continue": "Continue",
+    "errorDomainUnsupported": "This domain does not support Twake Drive.",
+    "errorNetwork": "No connection. Check your network.",
+    "errorGeneric": "Could not log in. Try again."
+  },
+  "drive": {
+    "myFiles": "My files",
+    "shared": "Shared with me",
+    "recent": "Recent",
+    "trash": "Trash",
+    "emptyFolder": "No files in this folder",
+    "emptyShared": "No files shared with you",
+    "emptyRecent": "No recent files",
+    "emptyTrash": "Trash is empty",
+    "fileMeta": {
+      "type": "Type",
+      "size": "Size",
+      "modified": "Modified",
+      "path": "Path",
+      "owner": "Owner"
+    }
+  },
+  "errors": {
+    "noNetwork": "No connection",
+    "forbidden": "Access denied",
+    "notFound": "This folder no longer exists",
+    "server": "Server error, try again later",
+    "generic": "Something went wrong"
+  }
+}

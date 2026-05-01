@@ -1,0 +1,43 @@
+{
+  "common": {
+    "close": "Fermer",
+    "retry": "Réessayer",
+    "loading": "Chargement…",
+    "logout": "Se déconnecter"
+  },
+  "auth": {
+    "welcomeTitle": "Bienvenue sur Twake Drive",
+    "welcomeSubtitle": "Vos fichiers, partout, en sécurité.",
+    "loginCta": "Se connecter",
+    "emailLabel": "Adresse email",
+    "emailPlaceholder": "vous@exemple.com",
+    "continue": "Continuer",
+    "errorDomainUnsupported": "Ce domaine ne supporte pas Twake Drive.",
+    "errorNetwork": "Pas de connexion. Vérifiez votre réseau.",
+    "errorGeneric": "Impossible de se connecter. Réessayez."
+  },
+  "drive": {
+    "myFiles": "Mes fichiers",
+    "shared": "Partagés avec moi",
+    "recent": "Récents",
+    "trash": "Corbeille",
+    "emptyFolder": "Aucun fichier dans ce dossier",
+    "emptyShared": "Aucun fichier partagé avec vous",
+    "emptyRecent": "Aucun fichier récent",
+    "emptyTrash": "Corbeille vide",
+    "fileMeta": {
+      "type": "Type",
+      "size": "Taille",
+      "modified": "Modifié",
+      "path": "Chemin",
+      "owner": "Propriétaire"
+    }
+  },
+  "errors": {
+    "noNetwork": "Pas de connexion",
+    "forbidden": "Accès refusé",
+    "notFound": "Ce dossier n'existe plus",
+    "server": "Erreur serveur, réessayez plus tard",
+    "generic": "Quelque chose s'est mal passé"
+  }
+}
