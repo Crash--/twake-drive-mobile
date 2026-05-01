@@ -1,5 +1,11 @@
 import '@testing-library/react-native/extend-expect'
 
+// Use node-fetch (http-based) so nock can intercept HTTP requests in tests.
+// Node 18+'s built-in fetch uses undici, which nock cannot intercept by default.
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const nodeFetch = require('node-fetch')
+;(global as unknown as { fetch: unknown }).fetch = nodeFetch
+
 jest.mock('expo-secure-store', () => ({
   getItemAsync: jest.fn(),
   setItemAsync: jest.fn(),
