@@ -9,13 +9,39 @@
     "web": "expo start --web"
   },
   "dependencies": {
+    "@gorhom/bottom-sheet": "^5.2.13",
+    "cozy-client": "^58.5.0",
+    "cozy-minilog": "^3.10.1",
+    "cozy-stack-client": "^58.4.0",
+    "date-fns": "^2.30.0",
     "expo": "~54.0.33",
+    "expo-localization": "~17.0.8",
+    "expo-router": "~6.0.23",
+    "expo-secure-store": "~15.0.8",
     "expo-status-bar": "~3.0.9",
+    "expo-web-browser": "~15.0.11",
+    "i18next": "^26.0.8",
     "react": "19.1.0",
-    "react-native": "0.81.5"
+    "react-i18next": "^17.0.6",
+    "react-native": "0.81.5",
+    "react-native-gesture-handler": "~2.28.0",
+    "react-native-paper": "^5.15.1",
+    "react-native-reanimated": "~4.1.1",
+    "react-native-safe-area-context": "~5.6.0",
+    "react-native-screens": "~4.16.0",
+    "react-native-vector-icons": "^10.3.0"
   },
   "devDependencies": {
+    "@testing-library/react-native": "^12.9.0",
     "@types/react": "~19.1.0",
+    "@types/react-native-vector-icons": "^6.4.18",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-prettier": "^5.5.5",
+    "eslint-plugin-react": "^7.37.5",
+    "eslint-plugin-react-hooks": "^7.1.1",
+    "jest-expo": "^55.0.16",
+    "nock": "^13.5.6",
+    "prettier": "^3.8.3",
     "typescript": "~5.9.2"
   },
   "private": true
