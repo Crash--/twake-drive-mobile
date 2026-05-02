@@ -7,7 +7,22 @@ jest.mock('cozy-client', () => ({
   default: jest.fn().mockImplementation(() => ({
     getStackClient: () => ({
       register: jest.fn(),
-      fetchAccessToken: jest.fn().mockResolvedValue({ accessToken: 'a', refreshToken: 'r' })
+      fetchJSON: jest.fn().mockResolvedValue({
+        access_token: 'a',
+        refresh_token: 'r',
+        token_type: 'bearer',
+        scope: '*'
+      }),
+      oauthOptions: {
+        clientID: 'cid',
+        clientSecret: 'csecret',
+        clientName: 'Twake Drive Mobile',
+        softwareID: 'twake-drive-mobile',
+        redirectURI: 'cozy://',
+        clientKind: 'mobile',
+        clientURI: 'https://twake.app',
+        scopes: ['io.cozy.files']
+      }
     }),
     logout: jest.fn()
   }))
@@ -19,7 +34,20 @@ import * as autodiscovery from './autodiscovery'
 import * as registerSessionMod from './registerSession'
 import { useAuth, AuthProvider } from './useAuth'
 
-const mockSession = { uri: 'https://alice.example.com', accessToken: 'a', refreshToken: 'r' }
+const mockSession = {
+  uri: 'https://alice.example.com',
+  oauthOptions: {
+    clientID: 'cid',
+    clientSecret: 'csecret',
+    clientName: 'Twake Drive Mobile',
+    softwareID: 'twake-drive-mobile',
+    redirectURI: 'cozy://',
+    clientKind: 'mobile',
+    clientURI: 'https://twake.app',
+    scopes: ['io.cozy.files']
+  },
+  token: { accessToken: 'a', refreshToken: 'r', tokenType: 'bearer', scope: '*' }
+}
 
 const Probe = () => {
   const { status, login, logout } = useAuth()
@@ -60,7 +88,7 @@ describe('useAuth', () => {
     jest.spyOn(autodiscovery, 'getLoginUri').mockResolvedValue(new URL('https://login.example.com'))
     jest
       .spyOn(oidcFlow, 'startOidcFlow')
-      .mockResolvedValue({ fqdn: 'alice.example.com', registerToken: 'tok', code: null })
+      .mockResolvedValue({ fqdn: 'alice.example.com', code: 'tok', defaultRedirection: null })
     jest.spyOn(registerSessionMod, 'registerSession').mockResolvedValue(mockSession)
     const saveSpy = jest.spyOn(tokenStorage, 'saveSession').mockResolvedValue()
 

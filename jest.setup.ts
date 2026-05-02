@@ -12,7 +12,9 @@ jest.mock('expo-secure-store', () => ({
 }))
 
 jest.mock('expo-web-browser', () => ({
-  openAuthSessionAsync: jest.fn(),
+  openBrowserAsync: jest.fn(),
+  dismissBrowser: jest.fn(),
+  WebBrowserPresentationStyle: { PAGE_SHEET: 'pageSheet' },
   WebBrowserResultType: {
     SUCCESS: 'success',
     CANCEL: 'cancel',

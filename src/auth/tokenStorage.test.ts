@@ -4,8 +4,22 @@ import { saveSession, getSession, clearSession, SESSION_KEY } from './tokenStora
 
 const session = {
   uri: 'https://example.com',
-  accessToken: 'access-1',
-  refreshToken: 'refresh-1'
+  oauthOptions: {
+    clientID: 'cid',
+    clientSecret: 'csecret',
+    clientName: 'Twake Drive Mobile',
+    softwareID: 'twake-drive-mobile',
+    redirectURI: 'cozy://',
+    clientKind: 'mobile',
+    clientURI: 'https://twake.app',
+    scopes: ['io.cozy.files']
+  },
+  token: {
+    accessToken: 'access-1',
+    refreshToken: 'refresh-1',
+    tokenType: 'bearer',
+    scope: '*'
+  }
 }
 
 describe('tokenStorage', () => {

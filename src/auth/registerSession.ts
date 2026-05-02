@@ -1,35 +1,48 @@
 import CozyClient from 'cozy-client'
 
-import { Session } from './types'
+import { OidcCallback, Session, OAuthOptions, OAuthToken } from './types'
 
-interface RegisterParams {
-  fqdn: string
-  registerToken: string
+interface AccessTokenResponse {
+  access_token: string
+  refresh_token: string
+  token_type: string
+  scope: string
 }
 
-export const registerSession = async ({
-  fqdn,
-  registerToken
-}: RegisterParams): Promise<Session> => {
-  const uri = `https://${fqdn}`
-  const client = new CozyClient({ uri })
+const buildOauthOptions = (): Omit<OAuthOptions, 'clientID' | 'clientSecret'> => ({
+  clientName: 'Twake Drive Mobile',
+  softwareID: 'twake-drive-mobile',
+  redirectURI: 'cozy://',
+  clientKind: 'mobile',
+  clientURI: 'https://twake.app',
+  scopes: ['io.cozy.files', 'io.cozy.files.shared-with-me']
+})
+
+export const registerSession = async (callback: OidcCallback): Promise<Session> => {
+  const uri = `https://${callback.fqdn}`
+  const client = new CozyClient({
+    uri,
+    appMetadata: { slug: 'twake-drive-mobile', version: '0.1.0' }
+  })
 
   const stackClient = client.getStackClient()
-  const oauthOptions = {
-    clientName: 'Twake Drive Mobile',
-    softwareID: 'twake-drive-mobile',
-    redirectURI: 'twakedrive://',
-    clientKind: 'mobile',
-    clientURI: 'https://twake.app',
-    scopes: ['io.cozy.files', 'io.cozy.files.shared-with-me']
+  await stackClient.register(buildOauthOptions())
+
+  const oauthOptions = stackClient.oauthOptions as OAuthOptions
+
+  const tokenResult = (await stackClient.fetchJSON('POST', '/oidc/access_token', {
+    code: callback.code,
+    client_id: oauthOptions.clientID,
+    client_secret: oauthOptions.clientSecret,
+    scope: '*'
+  })) as AccessTokenResponse
+
+  const token: OAuthToken = {
+    accessToken: tokenResult.access_token,
+    refreshToken: tokenResult.refresh_token,
+    tokenType: tokenResult.token_type,
+    scope: tokenResult.scope
   }
 
-  await stackClient.register(oauthOptions)
-  const token = await stackClient.fetchAccessToken(registerToken)
-
-  return {
-    uri,
-    accessToken: token.accessToken,
-    refreshToken: token.refreshToken
-  }
+  return { uri, oauthOptions, token }
 }

@@ -64,7 +64,7 @@ describe('getLoginUri', () => {
     const result = await getLoginUri('user@example.com')
     expect(result).not.toBeNull()
     expect(result?.origin).toBe('https://login.example.com')
-    expect(result?.searchParams.get('redirect_after_oidc')).toBe('twakedrive://')
+    expect(result?.searchParams.get('redirect_after_oidc')).toBe('cozy://')
   })
 
   it('returns null for an invalid email', async () => {
@@ -84,6 +84,6 @@ describe('getLoginUri', () => {
     })
     const result = await getLoginUri('user@example.com')
     expect(result?.searchParams.get('client_id')).toBe('foo')
-    expect(result?.searchParams.get('redirect_after_oidc')).toBe('twakedrive://')
+    expect(result?.searchParams.get('redirect_after_oidc')).toBe('cozy://')
   })
 })

@@ -25,7 +25,7 @@ export const fetchTwakeConfiguration = async (
   }
 }
 
-const REDIRECT_SCHEME = 'twakedrive://'
+const REDIRECT_SCHEME = 'cozy://'
 
 export const getLoginUri = async (email: string): Promise<URL | null> => {
   const domain = extractDomain(email)
