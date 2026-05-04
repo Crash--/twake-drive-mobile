@@ -24,24 +24,37 @@ describe('Breadcrumb', () => {
     { id: 'work', name: 'Travail' }
   ]
 
-  it('renders all segment names', () => {
+  it('renders the current folder name', () => {
     render(wrap(<Breadcrumb segments={segments} onSegmentPress={() => {}} />))
-    expect(screen.getByText('Mes fichiers')).toBeOnTheScreen()
-    expect(screen.getByText('Documents')).toBeOnTheScreen()
     expect(screen.getByText('Travail')).toBeOnTheScreen()
   })
 
-  it('calls onSegmentPress with the index when a non-last segment is tapped', () => {
+  it('does nothing when the title is tapped with a single root segment', () => {
     const handler = jest.fn()
-    render(wrap(<Breadcrumb segments={segments} onSegmentPress={handler} />))
+    render(
+      wrap(
+        <Breadcrumb
+          segments={[{ id: 'root', name: 'Mes fichiers' }]}
+          onSegmentPress={handler}
+        />
+      )
+    )
     fireEvent.press(screen.getByText('Mes fichiers'))
-    expect(handler).toHaveBeenCalledWith(0)
+    expect(handler).not.toHaveBeenCalled()
   })
 
-  it('does not fire onSegmentPress when the last segment is tapped', () => {
+  it('opens a dropdown listing parent segments when there are >= 2 segments', () => {
+    render(wrap(<Breadcrumb segments={segments} onSegmentPress={() => {}} />))
+    fireEvent.press(screen.getByText('Travail'))
+    expect(screen.getByText('Mes fichiers')).toBeOnTheScreen()
+    expect(screen.getByText('Documents')).toBeOnTheScreen()
+  })
+
+  it('calls onSegmentPress with the parent index when a parent is tapped', () => {
     const handler = jest.fn()
     render(wrap(<Breadcrumb segments={segments} onSegmentPress={handler} />))
     fireEvent.press(screen.getByText('Travail'))
-    expect(handler).not.toHaveBeenCalled()
+    fireEvent.press(screen.getByText('Documents'))
+    expect(handler).toHaveBeenCalledWith(1)
   })
 })

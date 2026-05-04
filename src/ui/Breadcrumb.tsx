@@ -1,6 +1,6 @@
-import React, { useEffect, useRef } from 'react'
-import { Pressable, ScrollView, StyleSheet, View } from 'react-native'
-import { Text, useTheme } from 'react-native-paper'
+import React, { useState } from 'react'
+import { Pressable, StyleSheet, View } from 'react-native'
+import { Icon, Menu, Text, useTheme } from 'react-native-paper'
 import { useQuery } from 'cozy-client'
 
 import { fileByIdQuery, fileByIdQueryAs } from '@/client/queries'
@@ -15,78 +15,107 @@ interface Props {
   onSegmentPress: (index: number) => void
 }
 
+/**
+ * Mobile breadcrumb modeled after twake-drive web's MobileBreadcrumb:
+ * shows only the CURRENT folder name with a chevron-down indicator when
+ * there are parent folders to navigate back to. Tapping opens a dropdown
+ * listing parent segments, each tappable.
+ *
+ * The component is rendered for any non-empty segments list. The dropdown
+ * is only enabled when segments.length >= 2.
+ */
 export const Breadcrumb = ({ segments, onSegmentPress }: Props) => {
   const theme = useTheme()
-  const scrollRef = useRef<ScrollView>(null)
+  const [menuVisible, setMenuVisible] = useState(false)
 
-  useEffect(() => {
-    const id = setTimeout(() => scrollRef.current?.scrollToEnd({ animated: false }), 0)
-    return () => clearTimeout(id)
-  }, [segments])
+  if (segments.length === 0) return null
+
+  const currentIndex = segments.length - 1
+  const current = segments[currentIndex]
+  const parents = segments.slice(0, currentIndex)
+  const hasParents = parents.length > 0
+
+  const onPressTitle = () => {
+    if (hasParents) setMenuVisible(true)
+  }
+
+  const onPressParent = (index: number) => {
+    setMenuVisible(false)
+    onSegmentPress(index)
+  }
 
   return (
     <View style={[styles.container, { backgroundColor: theme.colors.surface }]}>
-      <ScrollView ref={scrollRef} horizontal showsHorizontalScrollIndicator={false}>
-        {segments.map((segment, index) => {
-          const isLast = index === segments.length - 1
-          const isFirst = index === 0
-          return (
-            <View key={segment.id} style={styles.segmentWrapper}>
-              <BreadcrumbItem
-                segment={segment}
-                isLast={isLast}
-                isFirst={isFirst}
-                onPress={() => onSegmentPress(index)}
-              />
-              {!isLast ? (
-                <Text style={[styles.separator, { color: theme.colors.onSurfaceVariant }]}>/</Text>
-              ) : null}
-            </View>
-          )
-        })}
-      </ScrollView>
+      <Menu
+        visible={menuVisible}
+        onDismiss={() => setMenuVisible(false)}
+        anchor={
+          <Pressable
+            onPress={onPressTitle}
+            disabled={!hasParents}
+            accessibilityRole="button"
+            style={styles.titleRow}
+          >
+            <BreadcrumbTitle segment={current} color={theme.colors.onSurface} />
+            {hasParents ? (
+              <View style={styles.chevron}>
+                <Icon source="chevron-down" size={20} color={theme.colors.onSurface} />
+              </View>
+            ) : null}
+          </Pressable>
+        }
+      >
+        {parents.map((segment, index) => (
+          <BreadcrumbMenuItem
+            key={segment.id}
+            segment={segment}
+            onPress={() => onPressParent(index)}
+          />
+        ))}
+      </Menu>
     </View>
   )
 }
 
-interface ItemProps {
+interface TitleProps {
   segment: BreadcrumbSegment
-  isLast: boolean
-  isFirst: boolean
+  color: string
+}
+
+const BreadcrumbTitle = ({ segment, color }: TitleProps) => {
+  const lookup = useQuery(fileByIdQuery(segment.id), {
+    as: fileByIdQueryAs(segment.id),
+    enabled: !segment.name
+  })
+  const fetchedName = (lookup.data as { name?: string } | null | undefined)?.name ?? null
+  const name = segment.name ?? fetchedName ?? ''
+
+  return (
+    <Text variant="titleMedium" style={[styles.title, { color }]} numberOfLines={1}>
+      {name}
+    </Text>
+  )
+}
+
+interface MenuItemProps {
+  segment: BreadcrumbSegment
   onPress: () => void
 }
 
-const BreadcrumbItem = ({ segment, isLast, isFirst, onPress }: ItemProps) => {
-  const theme = useTheme()
+const BreadcrumbMenuItem = ({ segment, onPress }: MenuItemProps) => {
   const lookup = useQuery(fileByIdQuery(segment.id), {
     as: fileByIdQueryAs(segment.id),
-    enabled: !isFirst
+    enabled: !segment.name
   })
-  const fetchedName = isFirst
-    ? null
-    : ((lookup.data as { name?: string } | null | undefined)?.name ?? null)
+  const fetchedName = (lookup.data as { name?: string } | null | undefined)?.name ?? null
   const name = segment.name ?? fetchedName ?? segment.id
 
-  return (
-    <Pressable disabled={isLast} onPress={onPress} accessibilityRole="button">
-      <Text
-        variant="bodyMedium"
-        style={[
-          styles.segment,
-          isLast ? styles.current : null,
-          { color: isLast ? theme.colors.onSurface : theme.colors.primary }
-        ]}
-      >
-        {name}
-      </Text>
-    </Pressable>
-  )
+  return <Menu.Item onPress={onPress} title={name} />
 }
 
 const styles = StyleSheet.create({
   container: { paddingVertical: 8, paddingHorizontal: 16 },
-  segmentWrapper: { flexDirection: 'row', alignItems: 'center' },
-  segment: { paddingHorizontal: 4 },
-  current: { fontWeight: '700' },
-  separator: { paddingHorizontal: 4 }
+  titleRow: { flexDirection: 'row', alignItems: 'center' },
+  title: { fontWeight: '600' },
+  chevron: { marginLeft: 4 }
 })
