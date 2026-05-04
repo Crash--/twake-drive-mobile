@@ -15,6 +15,8 @@ import { FileMetadataSheet, FileMetadataSheetHandle } from '@/ui/FileMetadataShe
 import { useAuth } from '@/auth/useAuth'
 import { getErrorMessageKey } from '@/utils/errorMessages'
 import {
+  fileByIdQuery,
+  fileByIdQueryAs,
   folderContentsQuery,
   folderContentsQueryAs,
   ROOT_DIR_ID,
@@ -43,6 +45,14 @@ export default function FilesScreen() {
   const query = useQuery(folderContentsQuery(currentDirId), {
     as: folderContentsQueryAs(currentDirId)
   })
+
+  const currentDirLookup = useQuery(fileByIdQuery(currentDirId), {
+    as: fileByIdQueryAs(currentDirId),
+    enabled: !isRoot
+  })
+  const currentDirName = isRoot
+    ? t('drive.myFiles')
+    : ((currentDirLookup.data as { name?: string } | null | undefined)?.name ?? '')
 
   const onSegmentPress = (index: number) => {
     if (index === 0) router.dismissAll()
@@ -79,11 +89,7 @@ export default function FilesScreen() {
   return (
     <View style={styles.container}>
       <AppBar
-        title={
-          isRoot
-            ? t('drive.myFiles')
-            : (segments[segments.length - 1].name ?? segments[segments.length - 1].id)
-        }
+        title={currentDirName}
         onBack={isRoot ? undefined : () => router.back()}
         onLogout={isRoot ? logout : undefined}
       />

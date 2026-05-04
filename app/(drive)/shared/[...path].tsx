@@ -15,6 +15,8 @@ import { FileMetadataSheet, FileMetadataSheetHandle } from '@/ui/FileMetadataShe
 import { useAuth } from '@/auth/useAuth'
 import { getErrorMessageKey } from '@/utils/errorMessages'
 import {
+  fileByIdQuery,
+  fileByIdQueryAs,
   folderContentsQuery,
   folderContentsQueryAs,
   sharedWithMeQuery,
@@ -38,10 +40,23 @@ export default function SharedScreen() {
     return list
   }, [path, t])
 
+  const currentDirId = isRoot ? null : path[path.length - 1]
+
   const query = useQuery(
-    isRoot ? sharedWithMeQuery() : folderContentsQuery(path[path.length - 1]),
-    { as: isRoot ? sharedWithMeQueryAs : folderContentsQueryAs(path[path.length - 1]) }
+    isRoot ? sharedWithMeQuery() : folderContentsQuery(currentDirId as string),
+    { as: isRoot ? sharedWithMeQueryAs : folderContentsQueryAs(currentDirId as string) }
   )
+
+  const currentDirLookup = useQuery(
+    fileByIdQuery((currentDirId ?? '') as string),
+    {
+      as: fileByIdQueryAs((currentDirId ?? '') as string),
+      enabled: !isRoot
+    }
+  )
+  const currentDirName = isRoot
+    ? t('drive.shared')
+    : ((currentDirLookup.data as { name?: string } | null | undefined)?.name ?? '')
 
   const onSegmentPress = (index: number) => {
     if (index === 0) router.dismissAll()
@@ -78,11 +93,7 @@ export default function SharedScreen() {
   return (
     <View style={styles.container}>
       <AppBar
-        title={
-          isRoot
-            ? t('drive.shared')
-            : (segments[segments.length - 1].name ?? segments[segments.length - 1].id)
-        }
+        title={currentDirName}
         onBack={isRoot ? undefined : () => router.back()}
         onLogout={isRoot ? logout : undefined}
       />
