@@ -1,5 +1,6 @@
 import React, { useMemo, useRef } from 'react'
 import { FlatList, RefreshControl, StyleSheet, View } from 'react-native'
+import { List, useTheme } from 'react-native-paper'
 import { useLocalSearchParams, useRouter } from 'expo-router'
 import { useQuery } from 'cozy-client'
 import { useTranslation } from 'react-i18next'
@@ -21,11 +22,27 @@ import {
   folderContentsQueryAs,
   sharedWithMeQuery,
   sharedWithMeQueryAs,
-  FileQueryResult
+  FileQueryResult,
+  SharingQueryResult
 } from '@/client/queries'
+
+interface SharingRowItem {
+  _id: string
+  name: string
+  fileId: string
+}
+
+const sharingToRow = (sharing: SharingQueryResult): SharingRowItem | null => {
+  const rule = sharing.attributes?.rules?.[0]
+  const fileId = rule?.values?.[0]
+  if (!fileId) return null
+  const name = rule?.title ?? sharing.attributes?.description ?? fileId
+  return { _id: sharing._id, name, fileId }
+}
 
 export default function SharedScreen() {
   const router = useRouter()
+  const theme = useTheme()
   const { t } = useTranslation()
   const { logout } = useAuth()
   const params = useLocalSearchParams<{ path?: string[] }>()
@@ -47,13 +64,10 @@ export default function SharedScreen() {
     { as: isRoot ? sharedWithMeQueryAs : folderContentsQueryAs(currentDirId as string) }
   )
 
-  const currentDirLookup = useQuery(
-    fileByIdQuery((currentDirId ?? '') as string),
-    {
-      as: fileByIdQueryAs((currentDirId ?? '') as string),
-      enabled: !isRoot
-    }
-  )
+  const currentDirLookup = useQuery(fileByIdQuery((currentDirId ?? '') as string), {
+    as: fileByIdQueryAs((currentDirId ?? '') as string),
+    enabled: !isRoot
+  })
   const currentDirName = isRoot
     ? t('drive.shared')
     : ((currentDirLookup.data as { name?: string } | null | undefined)?.name ?? '')
@@ -63,7 +77,7 @@ export default function SharedScreen() {
     else router.dismissTo(`/(drive)/shared/${path?.slice(0, index).join('/')}`)
   }
 
-  const renderItem = ({ item }: { item: FileQueryResult }) => {
+  const renderFileItem = ({ item }: { item: FileQueryResult }) => {
     if (item.type === 'directory') {
       return (
         <FolderRow
@@ -88,7 +102,32 @@ export default function SharedScreen() {
     )
   }
 
-  const data = (query.data as FileQueryResult[] | null | undefined) ?? []
+  const renderSharingItem = ({ item }: { item: SharingRowItem }) => (
+    <List.Item
+      title={item.name}
+      left={props => (
+        <List.Icon {...props} icon="folder-account" color={theme.colors.primary} />
+      )}
+      right={props => <List.Icon {...props} icon="chevron-right" />}
+      onPress={() => router.push(`/(drive)/shared/${item.fileId}`)}
+      style={styles.row}
+    />
+  )
+
+  const sharings: SharingRowItem[] = isRoot
+    ? (((query.data as SharingQueryResult[] | null | undefined) ?? [])
+        .map(sharingToRow)
+        .filter((row): row is SharingRowItem => row !== null))
+    : []
+
+  const files = (!isRoot
+    ? ((query.data as FileQueryResult[] | null | undefined) ?? [])
+    : []) as FileQueryResult[]
+
+  const isEmpty = isRoot ? sharings.length === 0 : files.length === 0
+  const hasNothingYet = isRoot
+    ? !query.data || (query.data as unknown[]).length === 0
+    : files.length === 0
 
   return (
     <View style={styles.container}>
@@ -98,20 +137,34 @@ export default function SharedScreen() {
         onLogout={isRoot ? logout : undefined}
       />
       {!isRoot ? <Breadcrumb segments={segments} onSegmentPress={onSegmentPress} /> : null}
-      {query.fetchStatus === 'loading' && data.length === 0 ? (
+      {query.fetchStatus === 'loading' && hasNothingYet ? (
         <LoadingState />
       ) : query.fetchStatus === 'failed' ? (
         <ErrorState
           message={t(getErrorMessageKey(query.lastError))}
           onRetry={() => query.fetch()}
         />
-      ) : data.length === 0 ? (
+      ) : isEmpty ? (
         <EmptyState message={t('drive.emptyShared')} />
+      ) : isRoot ? (
+        <FlatList
+          data={sharings}
+          keyExtractor={item => item._id}
+          renderItem={renderSharingItem}
+          refreshControl={
+            <RefreshControl
+              refreshing={query.fetchStatus === 'loading'}
+              onRefresh={() => query.fetch()}
+            />
+          }
+          onEndReachedThreshold={0.5}
+          onEndReached={() => query.fetchMore?.()}
+        />
       ) : (
         <FlatList
-          data={data}
+          data={files}
           keyExtractor={item => item._id}
-          renderItem={renderItem}
+          renderItem={renderFileItem}
           refreshControl={
             <RefreshControl
               refreshing={query.fetchStatus === 'loading'}
@@ -128,5 +181,6 @@ export default function SharedScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1 }
+  container: { flex: 1 },
+  row: { paddingVertical: 4 }
 })

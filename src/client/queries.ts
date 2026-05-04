@@ -25,8 +25,26 @@ export const folderContentsQuery = (dirId: string): QueryDefinition =>
 
 export const folderContentsQueryAs = (dirId: string): string => `io.cozy.files/dir/${dirId}`
 
-export const sharedWithMeQuery = (): QueryDefinition => Q('io.cozy.files.shared-with-me')
-export const sharedWithMeQueryAs = 'io.cozy.files.shared-with-me'
+export interface SharingRule {
+  title: string
+  doctype: string
+  values: string[]
+}
+
+export interface SharingQueryResult {
+  _id: string
+  _type: string
+  attributes: {
+    description?: string
+    owner?: boolean
+    rules?: SharingRule[]
+    members?: unknown[]
+  }
+}
+
+export const sharedWithMeQuery = (): QueryDefinition =>
+  Q('io.cozy.sharings').where({ owner: false })
+export const sharedWithMeQueryAs = 'io.cozy.sharings/with-me'
 
 export const recentQuery = (): QueryDefinition =>
   Q('io.cozy.files')
