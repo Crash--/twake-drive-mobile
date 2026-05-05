@@ -440,7 +440,8 @@ TDD strict sur la logique pure d'auth. Pas de TDD sur l'UI au MVP.
 
 ## 13. Hors-périmètre, à reprendre dans v2+
 
-- Download / preview / upload.
+- Upload (création/édition de fichiers depuis le mobile).
+- Preview natif des fichiers : livré en v1.1 via `react-native-file-viewer` (Quick Look iOS / intent Android), avec téléchargement en cache via `expo-file-system`.
 - Création et gestion de partages.
 - Recherche.
 - Offline persistant (PouchDB ou équivalent).

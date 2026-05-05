@@ -1,0 +1,76 @@
+import * as FileSystem from 'expo-file-system/legacy'
+import FileViewer from 'react-native-file-viewer'
+
+import { openFileNatively } from './openFile'
+
+jest.mock('expo-file-system/legacy', () => ({
+  cacheDirectory: 'file:///cache/',
+  makeDirectoryAsync: jest.fn().mockResolvedValue(undefined),
+  downloadAsync: jest.fn()
+}))
+
+jest.mock('react-native-file-viewer', () => ({
+  __esModule: true,
+  default: { open: jest.fn().mockResolvedValue(undefined) }
+}))
+
+const makeClient = (token: string | null = 'tok-1', uri = 'https://alice.example.com') =>
+  ({
+    getStackClient: () => ({
+      uri,
+      getAccessToken: () => token
+    })
+  }) as unknown as import('cozy-client').default
+
+describe('openFileNatively', () => {
+  beforeEach(() => jest.clearAllMocks())
+
+  it('downloads to cache and opens via FileViewer', async () => {
+    ;(FileSystem.downloadAsync as jest.Mock).mockResolvedValueOnce({
+      status: 200,
+      uri: 'file:///cache/twake-drive/abc-test.pdf'
+    })
+    await openFileNatively(makeClient(), { _id: 'abc', name: 'test.pdf', mime: 'application/pdf' })
+    expect(FileSystem.makeDirectoryAsync).toHaveBeenCalledWith('file:///cache/twake-drive/', {
+      intermediates: true
+    })
+    expect(FileSystem.downloadAsync).toHaveBeenCalledWith(
+      'https://alice.example.com/files/download/abc',
+      'file:///cache/twake-drive/abc-test.pdf',
+      { headers: { Authorization: 'Bearer tok-1' } }
+    )
+    expect(FileViewer.open).toHaveBeenCalledWith('file:///cache/twake-drive/abc-test.pdf', {
+      showOpenWithDialog: true,
+      showAppsSuggestions: true
+    })
+  })
+
+  it('throws when no token is available', async () => {
+    await expect(
+      openFileNatively(makeClient(null), { _id: 'abc', name: 't.pdf' })
+    ).rejects.toThrow(/access token/)
+  })
+
+  it('throws when download status is non-2xx', async () => {
+    ;(FileSystem.downloadAsync as jest.Mock).mockResolvedValueOnce({
+      status: 404,
+      uri: 'file:///cache/twake-drive/abc-test.pdf'
+    })
+    await expect(
+      openFileNatively(makeClient(), { _id: 'abc', name: 't.pdf' })
+    ).rejects.toThrow(/HTTP 404/)
+  })
+
+  it('sanitizes filename slashes', async () => {
+    ;(FileSystem.downloadAsync as jest.Mock).mockResolvedValueOnce({
+      status: 200,
+      uri: 'file:///cache/twake-drive/abc-weird_name'
+    })
+    await openFileNatively(makeClient(), { _id: 'abc', name: 'weird/name' })
+    expect(FileSystem.downloadAsync).toHaveBeenCalledWith(
+      'https://alice.example.com/files/download/abc',
+      'file:///cache/twake-drive/abc-weird_name',
+      expect.any(Object)
+    )
+  })
+})

@@ -30,7 +30,9 @@
       "size": "Taille",
       "modified": "Modifié",
       "path": "Chemin",
-      "owner": "Propriétaire"
+      "owner": "Propriétaire",
+      "open": "Ouvrir",
+      "downloading": "Téléchargement…"
     }
   },
   "errors": {

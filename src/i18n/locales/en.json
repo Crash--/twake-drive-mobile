@@ -30,7 +30,9 @@
       "size": "Size",
       "modified": "Modified",
       "path": "Path",
-      "owner": "Owner"
+      "owner": "Owner",
+      "open": "Open",
+      "downloading": "Downloading…"
     }
   },
   "errors": {
