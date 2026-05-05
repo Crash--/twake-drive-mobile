@@ -1,11 +1,10 @@
-import React, { useMemo, useRef } from 'react'
+import React, { useCallback, useRef, useState } from 'react'
 import { FlatList, RefreshControl, StyleSheet, View } from 'react-native'
 import { useLocalSearchParams, useRouter } from 'expo-router'
 import { useQuery } from 'cozy-client'
 import { useTranslation } from 'react-i18next'
 
 import { AppBar } from '@/ui/AppBar'
-import { Breadcrumb, BreadcrumbSegment } from '@/ui/Breadcrumb'
 import { EmptyState } from '@/ui/EmptyState'
 import { ErrorState } from '@/ui/ErrorState'
 import { LoadingState } from '@/ui/LoadingState'
@@ -27,20 +26,21 @@ export default function FilesScreen() {
   const router = useRouter()
   const { t } = useTranslation()
   const { logout } = useAuth()
-  const params = useLocalSearchParams<{ path?: string[] }>()
-  const path = params.path as string[] | undefined
+  const params = useLocalSearchParams<{ path?: string | string[] }>()
+  const rawPath = params.path
+  const path: string[] | undefined =
+    rawPath === undefined
+      ? undefined
+      : Array.isArray(rawPath)
+        ? rawPath.filter(s => !!s)
+        : rawPath
+          ? [rawPath]
+          : undefined
   const sheetRef = useRef<FileMetadataSheetHandle>(null)
+  const [refreshing, setRefreshing] = useState(false)
 
-  const segments = useMemo<BreadcrumbSegment[]>(() => {
-    const list: BreadcrumbSegment[] = [{ id: ROOT_DIR_ID, name: t('drive.myFiles') }]
-    if (path) {
-      for (const id of path) list.push({ id })
-    }
-    return list
-  }, [path, t])
-
-  const currentDirId = path?.[path.length - 1] ?? ROOT_DIR_ID
   const isRoot = !path || path.length === 0
+  const currentDirId = isRoot ? ROOT_DIR_ID : path![path!.length - 1]
 
   const query = useQuery(folderContentsQuery(currentDirId), {
     as: folderContentsQueryAs(currentDirId)
@@ -50,14 +50,20 @@ export default function FilesScreen() {
     as: fileByIdQueryAs(currentDirId),
     enabled: !isRoot
   })
+  const lookupData = currentDirLookup.data
+  const lookupDoc = Array.isArray(lookupData) ? lookupData[0] : lookupData
   const currentDirName = isRoot
     ? t('drive.myFiles')
-    : ((currentDirLookup.data as { name?: string } | null | undefined)?.name ?? '')
+    : ((lookupDoc as { name?: string } | null | undefined)?.name ?? '')
 
-  const onSegmentPress = (index: number) => {
-    if (index === 0) router.dismissAll()
-    else router.dismissTo(`/(drive)/files/${path?.slice(0, index).join('/')}`)
-  }
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true)
+    try {
+      await query.fetch()
+    } finally {
+      setRefreshing(false)
+    }
+  }, [query])
 
   const renderItem = ({ item }: { item: FileQueryResult }) => {
     if (item.type === 'directory') {
@@ -93,7 +99,6 @@ export default function FilesScreen() {
         onBack={isRoot ? undefined : () => router.back()}
         onLogout={isRoot ? logout : undefined}
       />
-      {!isRoot ? <Breadcrumb segments={segments} onSegmentPress={onSegmentPress} /> : null}
       {query.fetchStatus === 'loading' && data.length === 0 ? (
         <LoadingState />
       ) : query.fetchStatus === 'failed' ? (
@@ -108,12 +113,7 @@ export default function FilesScreen() {
           data={data}
           keyExtractor={item => item._id}
           renderItem={renderItem}
-          refreshControl={
-            <RefreshControl
-              refreshing={query.fetchStatus === 'loading'}
-              onRefresh={() => query.fetch()}
-            />
-          }
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
           onEndReachedThreshold={0.5}
           onEndReached={() => query.fetchMore?.()}
         />

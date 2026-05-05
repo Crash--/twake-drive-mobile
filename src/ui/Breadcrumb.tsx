@@ -87,7 +87,9 @@ const BreadcrumbTitle = ({ segment, color }: TitleProps) => {
     as: fileByIdQueryAs(segment.id),
     enabled: !segment.name
   })
-  const fetchedName = (lookup.data as { name?: string } | null | undefined)?.name ?? null
+  const data = lookup.data
+  const doc = Array.isArray(data) ? data[0] : data
+  const fetchedName = (doc as { name?: string } | null | undefined)?.name ?? null
   const name = segment.name ?? fetchedName ?? ''
 
   return (
@@ -107,7 +109,9 @@ const BreadcrumbMenuItem = ({ segment, onPress }: MenuItemProps) => {
     as: fileByIdQueryAs(segment.id),
     enabled: !segment.name
   })
-  const fetchedName = (lookup.data as { name?: string } | null | undefined)?.name ?? null
+  const data = lookup.data
+  const doc = Array.isArray(data) ? data[0] : data
+  const fetchedName = (doc as { name?: string } | null | undefined)?.name ?? null
   const name = segment.name ?? fetchedName ?? segment.id
 
   return <Menu.Item onPress={onPress} title={name} />
