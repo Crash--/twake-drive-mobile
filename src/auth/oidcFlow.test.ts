@@ -1,4 +1,3 @@
-import { Linking } from 'react-native'
 import * as WebBrowser from 'expo-web-browser'
 
 import { parseCallbackUrl, startOidcFlow } from './oidcFlow'
@@ -15,8 +14,7 @@ describe('parseCallbackUrl', () => {
   })
 
   it('returns defaultRedirection as null when missing', () => {
-    const url = 'cozy://?fqdn=alice.example.com&code=abc'
-    expect(parseCallbackUrl(url)).toEqual({
+    expect(parseCallbackUrl('cozy://?fqdn=alice.example.com&code=abc')).toEqual({
       fqdn: 'alice.example.com',
       code: 'abc',
       defaultRedirection: null
@@ -37,44 +35,28 @@ describe('parseCallbackUrl', () => {
 })
 
 describe('startOidcFlow', () => {
-  let urlListeners: Array<(event: { url: string }) => void> = []
-  const subscription = { remove: jest.fn() }
+  beforeEach(() => jest.clearAllMocks())
 
-  beforeEach(() => {
-    jest.clearAllMocks()
-    urlListeners = []
-    ;(Linking.addEventListener as jest.Mock) = jest.fn((event, cb) => {
-      if (event === 'url') {
-        urlListeners.push(cb)
-      }
-      return subscription
+  it('returns parsed callback when openAuthSessionAsync resolves with success', async () => {
+    ;(WebBrowser.openAuthSessionAsync as jest.Mock).mockResolvedValueOnce({
+      type: 'success',
+      url: 'cozy://?fqdn=alice.example.com&code=tok'
     })
-    ;(WebBrowser.openBrowserAsync as jest.Mock) = jest
-      .fn()
-      .mockResolvedValue({ type: 'opened' })
-    ;(WebBrowser.dismissBrowser as jest.Mock) = jest.fn().mockResolvedValue(undefined)
+    const result = await startOidcFlow(new URL('https://login.example.com/oauth'))
+    expect(result).toEqual({ fqdn: 'alice.example.com', code: 'tok', defaultRedirection: null })
   })
 
-  it('resolves with parsed callback when a deep link arrives', async () => {
-    const promise = startOidcFlow(new URL('https://login.example.com/oauth'))
-    urlListeners[0]({ url: 'cozy://?fqdn=alice.example.com&code=tok' })
-    await expect(promise).resolves.toEqual({
-      fqdn: 'alice.example.com',
-      code: 'tok',
-      defaultRedirection: null
-    })
-  })
-
-  it('rejects with UserCancelledError when the browser is dismissed', async () => {
-    ;(WebBrowser.openBrowserAsync as jest.Mock).mockResolvedValueOnce({ type: 'cancel' })
+  it('throws UserCancelledError on cancel', async () => {
+    ;(WebBrowser.openAuthSessionAsync as jest.Mock).mockResolvedValueOnce({ type: 'cancel' })
     await expect(startOidcFlow(new URL('https://login.example.com/oauth'))).rejects.toBeInstanceOf(
       UserCancelledError
     )
   })
 
-  it('rejects when the deep link is malformed', async () => {
-    const promise = startOidcFlow(new URL('https://login.example.com/oauth'))
-    urlListeners[0]({ url: 'cozy://?missing=params' })
-    await expect(promise).rejects.toThrow()
+  it('throws UserCancelledError on dismiss', async () => {
+    ;(WebBrowser.openAuthSessionAsync as jest.Mock).mockResolvedValueOnce({ type: 'dismiss' })
+    await expect(startOidcFlow(new URL('https://login.example.com/oauth'))).rejects.toBeInstanceOf(
+      UserCancelledError
+    )
   })
 })

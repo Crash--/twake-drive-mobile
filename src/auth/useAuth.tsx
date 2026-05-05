@@ -35,12 +35,17 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   }, [])
 
   const login = useCallback(async (email: string): Promise<void> => {
+    console.log('[useAuth] login start', email)
     const loginUri = await getLoginUri(email)
+    console.log('[useAuth] loginUri', loginUri?.toString() ?? 'null')
     if (!loginUri) throw new Error('DOMAIN_UNSUPPORTED')
 
     const callback = await startOidcFlow(loginUri)
+    console.log('[useAuth] oidc callback', JSON.stringify(callback))
     const session = await registerSession(callback)
+    console.log('[useAuth] session built for', session.uri)
     await saveSession(session)
+    console.log('[useAuth] session saved, transitioning to authenticated')
 
     setState({ status: 'authenticated', client: createClient(session) })
   }, [])

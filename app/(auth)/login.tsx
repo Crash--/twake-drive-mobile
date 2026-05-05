@@ -24,6 +24,7 @@ export default function LoginScreen() {
       await login(email)
       router.replace('/(drive)/files')
     } catch (err) {
+      console.error('[login] error', (err as Error).name, (err as Error).message, err)
       if (err instanceof UserCancelledError) {
         // silent — user closed the browser
       } else if ((err as Error).message === 'DOMAIN_UNSUPPORTED') {
@@ -31,7 +32,7 @@ export default function LoginScreen() {
       } else if ((err as Error).message?.toLowerCase().includes('network')) {
         setError(t('auth.errorNetwork'))
       } else {
-        setError(t('auth.errorGeneric'))
+        setError(`${(err as Error).name}: ${(err as Error).message}`)
       }
     } finally {
       setLoading(false)
