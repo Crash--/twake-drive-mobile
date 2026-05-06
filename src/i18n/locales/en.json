@@ -44,6 +44,8 @@
     },
     "createMenu": {
       "folder": "New folder",
+      "note": "New note",
+      "docs": "New document",
       "text": "Word document",
       "sheet": "Spreadsheet",
       "slide": "Presentation"

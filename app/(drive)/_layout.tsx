@@ -64,6 +64,12 @@ export default function DriveLayout() {
           href: null
         }}
       />
+      <Tabs.Screen
+        name="docs/new/[folderId]"
+        options={{
+          href: null
+        }}
+      />
     </Tabs>
   )
 }

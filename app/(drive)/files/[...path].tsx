@@ -17,7 +17,9 @@ import { CreateOfficeFileDialog } from '@/ui/CreateOfficeFileDialog'
 import { useAuth } from '@/auth/useAuth'
 import { getErrorMessageKey } from '@/utils/errorMessages'
 import { createFolder } from '@/files/createFolder'
+import { createCozyNote } from '@/files/createCozyNote'
 import { createOfficeFile, OfficeFileClass } from '@/files/createOfficeFile'
+import { useFlag } from '@/client/useFlag'
 import {
   fileByIdQuery,
   fileByIdQueryAs,
@@ -47,6 +49,7 @@ export default function FilesScreen() {
   const [creatingClass, setCreatingClass] = useState<OfficeFileClass | null>(null)
   const [fabOpen, setFabOpen] = useState(false)
   const client = useClient()
+  const docsEnabled = !!useFlag('drive.lasuitedocs.enabled')
 
   const isRoot = !path || path.length === 0
   const currentDirId = isRoot ? ROOT_DIR_ID : path![path!.length - 1]
@@ -90,6 +93,21 @@ export default function FilesScreen() {
     router.push(`/(drive)/onlyoffice/${created._id}`)
   }
 
+  const handleCreateNote = async (): Promise<void> => {
+    if (!client) return
+    try {
+      const created = await createCozyNote(client, currentDirId)
+      await query.fetch()
+      router.push(`/(drive)/note/${created._id}`)
+    } catch (e) {
+      console.error('[FilesScreen] note creation failed', e)
+    }
+  }
+
+  const handleCreateDocs = (): void => {
+    router.push(`/(drive)/docs/new/${currentDirId}`)
+  }
+
   const renderItem = ({ item }: { item: FileQueryResult }) => {
     if (item.type === 'directory') {
       return (
@@ -116,6 +134,43 @@ export default function FilesScreen() {
   }
 
   const data = (query.data as FileQueryResult[] | null | undefined) ?? []
+
+  const fabActions = [
+    {
+      icon: 'folder-plus',
+      label: t('drive.createMenu.folder'),
+      onPress: () => setCreateFolderVisible(true)
+    },
+    {
+      icon: 'note-text',
+      label: t('drive.createMenu.note'),
+      onPress: () => void handleCreateNote()
+    },
+    ...(docsEnabled
+      ? [
+          {
+            icon: 'file-document-edit',
+            label: t('drive.createMenu.docs'),
+            onPress: () => handleCreateDocs()
+          }
+        ]
+      : []),
+    {
+      icon: 'file-document-outline',
+      label: t('drive.createMenu.text'),
+      onPress: () => setCreatingClass('text')
+    },
+    {
+      icon: 'file-table-outline',
+      label: t('drive.createMenu.sheet'),
+      onPress: () => setCreatingClass('sheet')
+    },
+    {
+      icon: 'file-presentation-box',
+      label: t('drive.createMenu.slide'),
+      onPress: () => setCreatingClass('slide')
+    }
+  ]
 
   return (
     <View style={styles.container}>
@@ -148,28 +203,7 @@ export default function FilesScreen() {
         open={fabOpen}
         visible
         icon={fabOpen ? 'close' : 'plus'}
-        actions={[
-          {
-            icon: 'folder-plus',
-            label: t('drive.createMenu.folder'),
-            onPress: () => setCreateFolderVisible(true)
-          },
-          {
-            icon: 'file-document-outline',
-            label: t('drive.createMenu.text'),
-            onPress: () => setCreatingClass('text')
-          },
-          {
-            icon: 'file-table-outline',
-            label: t('drive.createMenu.sheet'),
-            onPress: () => setCreatingClass('sheet')
-          },
-          {
-            icon: 'file-presentation-box',
-            label: t('drive.createMenu.slide'),
-            onPress: () => setCreatingClass('slide')
-          }
-        ]}
+        actions={fabActions}
         onStateChange={({ open }) => setFabOpen(open)}
       />
       <CreateFolderDialog
