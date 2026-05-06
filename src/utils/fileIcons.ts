@@ -1,5 +1,3 @@
-import mime from 'mime-types'
-
 /**
  * Mime → icon classification, mirrored from twake-drive web's
  * src/lib/getMimeTypeIcon.js + src/lib/getFileMimetype.js.
@@ -9,7 +7,66 @@ import mime from 'mime-types'
  * keywords (word/text/excel/spreadsheet/sheet/powerpoint/presentation/pdf/zip)
  * so that .docx, .ods, .pptx, etc. classify correctly without listing every
  * concrete mime explicitly.
+ *
+ * NOTE: we deliberately do NOT use the npm `mime` / `mime-types` packages.
+ * Both import node `path` / `fs`, which Metro cannot resolve in RN.
+ * The extension table below covers everything our 10 categories need.
  */
+
+const EXTENSION_TO_MIME: Record<string, string> = {
+  // text-like
+  txt: 'text/plain',
+  md: 'text/markdown',
+  csv: 'text/csv',
+  html: 'text/html',
+  htm: 'text/html',
+  // images
+  png: 'image/png',
+  jpg: 'image/jpeg',
+  jpeg: 'image/jpeg',
+  gif: 'image/gif',
+  webp: 'image/webp',
+  heic: 'image/heic',
+  heif: 'image/heif',
+  svg: 'image/svg+xml',
+  bmp: 'image/bmp',
+  // audio
+  mp3: 'audio/mpeg',
+  wav: 'audio/wav',
+  m4a: 'audio/mp4',
+  flac: 'audio/flac',
+  ogg: 'audio/ogg',
+  // video
+  mp4: 'video/mp4',
+  mov: 'video/quicktime',
+  avi: 'video/x-msvideo',
+  mkv: 'video/x-matroska',
+  webm: 'video/webm',
+  // documents
+  pdf: 'application/pdf',
+  doc: 'application/msword',
+  docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  odt: 'application/vnd.oasis.opendocument.text',
+  rtf: 'application/rtf',
+  xls: 'application/vnd.ms-excel',
+  xlsx: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  ods: 'application/vnd.oasis.opendocument.spreadsheet',
+  ppt: 'application/vnd.ms-powerpoint',
+  pptx: 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+  odp: 'application/vnd.oasis.opendocument.presentation',
+  // archives
+  zip: 'application/zip',
+  tar: 'application/x-tar',
+  gz: 'application/gzip',
+  '7z': 'application/x-7z-compressed',
+  // code
+  js: 'application/javascript',
+  ts: 'application/typescript',
+  json: 'application/json',
+  xml: 'application/xml',
+  yaml: 'application/x-yaml',
+  yml: 'application/x-yaml'
+}
 
 const MAPPING_SUBTYPE: Record<string, string> = {
   word: 'text',
@@ -55,8 +112,10 @@ const classifyMime = (mimeType: string): string | undefined => {
 }
 
 const lookupMimeFromName = (name: string): string => {
-  const looked = mime.lookup(name)
-  return typeof looked === 'string' ? looked : 'application/octet-stream'
+  const dot = name.lastIndexOf('.')
+  if (dot === -1) return 'application/octet-stream'
+  const ext = name.slice(dot + 1).toLowerCase()
+  return EXTENSION_TO_MIME[ext] ?? 'application/octet-stream'
 }
 
 export const getFileIcon = (type: string, mimeArg?: string, name?: string): string => {
