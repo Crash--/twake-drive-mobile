@@ -42,6 +42,17 @@
       "errorConflict": "Un dossier avec ce nom existe déjà.",
       "errorGeneric": "Erreur lors de la création du dossier."
     },
+    "createMenu": {
+      "folder": "Nouveau dossier",
+      "text": "Document Word",
+      "sheet": "Tableur",
+      "slide": "Présentation"
+    },
+    "createOffice": {
+      "title": "Nom du document",
+      "submit": "Créer",
+      "errorGeneric": "Échec de la création."
+    },
     "onlyoffice": {
       "title": "Document"
     }

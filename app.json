@@ -5,14 +5,19 @@
     "version": "0.1.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
-    "scheme": ["cozy", "twakedrive"],
+    "scheme": [
+      "cozy",
+      "twakedrive"
+    ],
     "userInterfaceStyle": "automatic",
     "splash": {
       "image": "./assets/splash.png",
       "resizeMode": "contain",
       "backgroundColor": "#ffffff"
     },
-    "assetBundlePatterns": ["**/*"],
+    "assetBundlePatterns": [
+      "**/*"
+    ],
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.linagora.twakedrive"
@@ -24,7 +29,13 @@
       },
       "package": "com.linagora.twakedrive"
     },
-    "plugins": ["expo-router", "expo-secure-store", "expo-web-browser", "expo-localization"],
+    "plugins": [
+      "expo-router",
+      "expo-secure-store",
+      "expo-web-browser",
+      "expo-localization",
+      "expo-asset"
+    ],
     "experiments": {
       "typedRoutes": true
     }

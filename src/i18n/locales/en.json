@@ -42,6 +42,17 @@
       "errorConflict": "A folder with this name already exists.",
       "errorGeneric": "Failed to create folder."
     },
+    "createMenu": {
+      "folder": "New folder",
+      "text": "Word document",
+      "sheet": "Spreadsheet",
+      "slide": "Presentation"
+    },
+    "createOffice": {
+      "title": "Document name",
+      "submit": "Create",
+      "errorGeneric": "Failed to create document."
+    },
     "onlyoffice": {
       "title": "Document"
     }

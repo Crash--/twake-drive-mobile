@@ -13,9 +13,11 @@ import { FileRow } from '@/ui/FileRow'
 import { FolderRow } from '@/ui/FolderRow'
 import { FileMetadataSheet, FileMetadataSheetHandle } from '@/ui/FileMetadataSheet'
 import { CreateFolderDialog } from '@/ui/CreateFolderDialog'
+import { CreateOfficeFileDialog } from '@/ui/CreateOfficeFileDialog'
 import { useAuth } from '@/auth/useAuth'
 import { getErrorMessageKey } from '@/utils/errorMessages'
 import { createFolder } from '@/files/createFolder'
+import { createOfficeFile, OfficeFileClass } from '@/files/createOfficeFile'
 import { isOfficeFile } from '@/files/fileTypes'
 import {
   fileByIdQuery,
@@ -43,6 +45,8 @@ export default function FilesScreen() {
   const sheetRef = useRef<FileMetadataSheetHandle>(null)
   const [refreshing, setRefreshing] = useState(false)
   const [createFolderVisible, setCreateFolderVisible] = useState(false)
+  const [creatingClass, setCreatingClass] = useState<OfficeFileClass | null>(null)
+  const [fabOpen, setFabOpen] = useState(false)
   const client = useClient()
 
   const isRoot = !path || path.length === 0
@@ -76,6 +80,15 @@ export default function FilesScreen() {
     await createFolder(client, name, currentDirId)
     setCreateFolderVisible(false)
     await query.fetch()
+  }
+
+  const handleCreateOffice = async (name: string) => {
+    if (!client || !creatingClass) throw new Error('No client or class')
+    const cls = creatingClass
+    const created = await createOfficeFile(client, cls, name, currentDirId)
+    setCreatingClass(null)
+    await query.fetch()
+    router.push(`/(drive)/onlyoffice/${created._id}`)
   }
 
   const renderItem = ({ item }: { item: FileQueryResult }) => {
@@ -136,26 +149,49 @@ export default function FilesScreen() {
         />
       )}
       <FileMetadataSheet ref={sheetRef} />
-      <FAB
-        icon="plus"
-        style={styles.fab}
-        onPress={() => setCreateFolderVisible(true)}
-        accessibilityLabel={t('drive.createFolder.title')}
+      <FAB.Group
+        open={fabOpen}
+        visible
+        icon={fabOpen ? 'close' : 'plus'}
+        actions={[
+          {
+            icon: 'folder-plus',
+            label: t('drive.createMenu.folder'),
+            onPress: () => setCreateFolderVisible(true)
+          },
+          {
+            icon: 'file-document-outline',
+            label: t('drive.createMenu.text'),
+            onPress: () => setCreatingClass('text')
+          },
+          {
+            icon: 'file-table-outline',
+            label: t('drive.createMenu.sheet'),
+            onPress: () => setCreatingClass('sheet')
+          },
+          {
+            icon: 'file-presentation-box',
+            label: t('drive.createMenu.slide'),
+            onPress: () => setCreatingClass('slide')
+          }
+        ]}
+        onStateChange={({ open }) => setFabOpen(open)}
       />
       <CreateFolderDialog
         visible={createFolderVisible}
         onDismiss={() => setCreateFolderVisible(false)}
         onSubmit={handleCreate}
       />
+      <CreateOfficeFileDialog
+        visible={creatingClass !== null}
+        fileClass={creatingClass}
+        onDismiss={() => setCreatingClass(null)}
+        onSubmit={handleCreateOffice}
+      />
     </View>
   )
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1 },
-  fab: {
-    position: 'absolute',
-    right: 16,
-    bottom: 16
-  }
+  container: { flex: 1 }
 })

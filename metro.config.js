@@ -3,6 +3,9 @@ const { getDefaultConfig } = require('expo/metro-config')
 
 const config = getDefaultConfig(__dirname)
 
+// Allow bundling OnlyOffice templates as binary assets via require()
+config.resolver.assetExts = [...new Set([...config.resolver.assetExts, 'docx', 'xlsx', 'pptx'])]
+
 const stub = path.resolve(__dirname, 'src/utils/emptyModule.js')
 
 const STUBBED = new Set([
