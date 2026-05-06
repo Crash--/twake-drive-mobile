@@ -1,4 +1,4 @@
-import { isCozyNoteFile, isOfficeFile } from './fileTypes'
+import { isCozyNoteFile, isDocsNoteFile, isOfficeFile } from './fileTypes'
 
 describe('isCozyNoteFile', () => {
   it('returns false for missing name', () => {
@@ -17,6 +17,26 @@ describe('isCozyNoteFile', () => {
     expect(isCozyNoteFile('foo.txt')).toBe(false)
     expect(isCozyNoteFile('cozy-note')).toBe(false)
     expect(isCozyNoteFile('foo.cozy-note.txt')).toBe(false)
+  })
+})
+
+describe('isDocsNoteFile', () => {
+  it('returns false for missing name', () => {
+    expect(isDocsNoteFile()).toBe(false)
+    expect(isDocsNoteFile(undefined)).toBe(false)
+    expect(isDocsNoteFile('')).toBe(false)
+  })
+
+  it('returns true for .docs-note files (case-insensitive)', () => {
+    expect(isDocsNoteFile('Daily.docs-note')).toBe(true)
+    expect(isDocsNoteFile('Notes.DOCS-NOTE')).toBe(true)
+    expect(isDocsNoteFile('foo.bar.docs-note')).toBe(true)
+  })
+
+  it('returns false for other extensions', () => {
+    expect(isDocsNoteFile('foo.txt')).toBe(false)
+    expect(isDocsNoteFile('docs-note')).toBe(false)
+    expect(isDocsNoteFile('foo.docs-note.zip')).toBe(false)
   })
 })
 

@@ -9,7 +9,7 @@ import { useRouter } from 'expo-router'
 
 import { formatFileSize } from '@/utils/formatters'
 import { openFileNatively } from '@/files/openFile'
-import { isCozyNoteFile, isOfficeFile } from '@/files/fileTypes'
+import { isCozyNoteFile, isDocsNoteFile, isOfficeFile } from '@/files/fileTypes'
 import { FileThumbnail } from './FileThumbnail'
 
 export interface FileMetadata {
@@ -56,6 +56,11 @@ export const FileMetadataSheet = forwardRef<FileMetadataSheetHandle>((_, ref) =>
     if (isCozyNoteFile(file.name)) {
       bottomSheetRef.current?.close()
       router.push(`/(drive)/note/${file._id}`)
+      return
+    }
+    if (isDocsNoteFile(file.name)) {
+      bottomSheetRef.current?.close()
+      router.push(`/(drive)/docs/${file._id}`)
       return
     }
     if (isOfficeFile(file.mime)) {

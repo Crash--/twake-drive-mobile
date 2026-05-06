@@ -8,6 +8,7 @@ const ALL_KEYS: FileIconKey[] = [
   'audio',
   'bin',
   'code',
+  'docs',
   'files',
   'folder',
   'image',

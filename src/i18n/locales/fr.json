@@ -58,6 +58,9 @@
     },
     "note": {
       "title": "Note"
+    },
+    "docs": {
+      "title": "Document"
     }
   },
   "errors": {

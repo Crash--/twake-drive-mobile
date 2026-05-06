@@ -75,8 +75,12 @@ describe('getFileIcon', () => {
     expect(getFileIcon('file', 'application/vnd.cozy.note', 'Daily.cozy-note')).toBe('note')
   })
 
-  it('returns text for .docs-note files (no dedicated cozy-ui icon)', () => {
-    expect(getFileIcon('file', undefined, 'meeting.docs-note')).toBe('text')
+  it('returns docs for .docs-note files', () => {
+    expect(getFileIcon('file', 'application/vnd.cozy.docs', 'Daily.docs-note')).toBe('docs')
+  })
+
+  it('returns docs for .docs-note files even when mime is missing', () => {
+    expect(getFileIcon('file', undefined, 'meeting.docs-note')).toBe('docs')
   })
 
   it('uses filename extension when mime is missing', () => {

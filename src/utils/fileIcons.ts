@@ -20,6 +20,7 @@ export type FileIconKey =
   | 'audio'
   | 'bin'
   | 'code'
+  | 'docs'
   | 'files'
   | 'folder'
   | 'image'
@@ -129,10 +130,7 @@ const lookupMimeFromName = (name: string): string => {
 export const getFileIcon = (type: string, mimeArg?: string, name?: string): FileIconKey => {
   if (type === 'directory') return 'folder'
   if (name && NOTE_RE.test(name)) return 'note'
-  // TODO: cozy-ui doesn't ship a dedicated icon for .docs-note
-  // (twake-drive web uses an `IconDocs` outside FileType*); fall back to
-  // the text icon for now.
-  if (name && DOCS_NOTE_RE.test(name)) return 'text'
+  if (name && DOCS_NOTE_RE.test(name)) return 'docs'
 
   const effectiveMime =
     !mimeArg || mimeArg === 'application/octet-stream'
