@@ -90,7 +90,7 @@ export const FileThumbnail = ({ file, size = 40 }: Props) => {
     }
   }
 
-  const iconName = getFileIcon(fileType, file.mime)
+  const iconName = getFileIcon(fileType, file.mime, file.name)
   return (
     <View style={[styles.fallback, { width: size, height: size }]}>
       <Icon name={iconName} size={size * 0.7} color={theme.colors.onSurfaceVariant} />

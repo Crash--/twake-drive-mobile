@@ -29,8 +29,34 @@ describe('getFileIcon', () => {
     ).toBe('file-excel')
   })
 
-  it('returns file-word for document mimes', () => {
-    expect(getFileIcon('file', 'application/msword')).toBe('file-word')
+  it('classifies application/vnd.oasis.opendocument.spreadsheet as sheet', () => {
+    expect(getFileIcon('file', 'application/vnd.oasis.opendocument.spreadsheet')).toBe(
+      'file-excel'
+    )
+  })
+
+  it('returns file-document for word document mimes (matching twake-drive web)', () => {
+    expect(getFileIcon('file', 'application/msword')).toBe('file-document')
+    expect(
+      getFileIcon('file', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document')
+    ).toBe('file-document')
+  })
+
+  it('classifies application/vnd.oasis.opendocument.text as text', () => {
+    expect(getFileIcon('file', 'application/vnd.oasis.opendocument.text')).toBe('file-document')
+  })
+
+  it('returns file-presentation-box for presentation mimes', () => {
+    expect(
+      getFileIcon('file', 'application/vnd.openxmlformats-officedocument.presentationml.presentation')
+    ).toBe('file-presentation-box')
+    expect(getFileIcon('file', 'application/vnd.ms-powerpoint')).toBe('file-presentation-box')
+  })
+
+  it('classifies application/vnd.oasis.opendocument.presentation as slide', () => {
+    expect(getFileIcon('file', 'application/vnd.oasis.opendocument.presentation')).toBe(
+      'file-presentation-box'
+    )
   })
 
   it('returns file-document for text/* mimes', () => {
@@ -44,5 +70,22 @@ describe('getFileIcon', () => {
   it('returns generic file for unknown mime', () => {
     expect(getFileIcon('file', 'application/octet-stream')).toBe('file')
     expect(getFileIcon('file')).toBe('file')
+  })
+
+  it('returns note-text for .cozy-note files', () => {
+    expect(getFileIcon('file', 'application/vnd.cozy.note', 'Daily.cozy-note')).toBe('note-text')
+  })
+
+  it('returns file-document-edit for .docs-note files', () => {
+    expect(getFileIcon('file', undefined, 'meeting.docs-note')).toBe('file-document-edit')
+  })
+
+  it('uses filename extension when mime is missing', () => {
+    expect(getFileIcon('file', undefined, 'foo.pdf')).toBe('file-pdf-box')
+    expect(getFileIcon('file', undefined, 'photo.png')).toBe('file-image')
+  })
+
+  it('uses filename extension when mime is octet-stream', () => {
+    expect(getFileIcon('file', 'application/octet-stream', 'foo.pdf')).toBe('file-pdf-box')
   })
 })
