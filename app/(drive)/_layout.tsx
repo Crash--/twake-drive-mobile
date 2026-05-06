@@ -46,6 +46,12 @@ export default function DriveLayout() {
           )
         }}
       />
+      <Tabs.Screen
+        name="onlyoffice/[fileId]"
+        options={{
+          href: null
+        }}
+      />
     </Tabs>
   )
 }

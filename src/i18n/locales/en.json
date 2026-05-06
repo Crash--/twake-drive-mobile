@@ -41,6 +41,9 @@
       "submit": "Create",
       "errorConflict": "A folder with this name already exists.",
       "errorGeneric": "Failed to create folder."
+    },
+    "onlyoffice": {
+      "title": "Document"
     }
   },
   "errors": {

@@ -16,6 +16,7 @@ import { CreateFolderDialog } from '@/ui/CreateFolderDialog'
 import { useAuth } from '@/auth/useAuth'
 import { getErrorMessageKey } from '@/utils/errorMessages'
 import { createFolder } from '@/files/createFolder'
+import { isOfficeFile } from '@/files/fileTypes'
 import {
   fileByIdQuery,
   fileByIdQueryAs,
@@ -91,13 +92,17 @@ export default function FilesScreen() {
     return (
       <FileRow
         file={{ ...item, size: item.size ?? null }}
-        onPress={file =>
+        onPress={file => {
+          if (isOfficeFile(file.mime)) {
+            router.push(`/(drive)/onlyoffice/${file._id}`)
+            return
+          }
           sheetRef.current?.present({
             ...file,
             cozyMetadata: item.cozyMetadata,
             path: item.path
           })
-        }
+        }}
       />
     )
   }

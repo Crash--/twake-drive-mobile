@@ -41,6 +41,9 @@
       "submit": "Créer",
       "errorConflict": "Un dossier avec ce nom existe déjà.",
       "errorGeneric": "Erreur lors de la création du dossier."
+    },
+    "onlyoffice": {
+      "title": "Document"
     }
   },
   "errors": {

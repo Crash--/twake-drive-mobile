@@ -1,5 +1,6 @@
 import React, { useRef } from 'react'
 import { FlatList, RefreshControl, StyleSheet, View } from 'react-native'
+import { useRouter } from 'expo-router'
 import { useQuery } from 'cozy-client'
 import { useTranslation } from 'react-i18next'
 
@@ -12,8 +13,10 @@ import { FileMetadataSheet, FileMetadataSheetHandle } from '@/ui/FileMetadataShe
 import { useAuth } from '@/auth/useAuth'
 import { getErrorMessageKey } from '@/utils/errorMessages'
 import { trashQuery, trashQueryAs, FileQueryResult } from '@/client/queries'
+import { isOfficeFile } from '@/files/fileTypes'
 
 export default function TrashScreen() {
+  const router = useRouter()
   const { t } = useTranslation()
   const { logout } = useAuth()
   const sheetRef = useRef<FileMetadataSheetHandle>(null)
@@ -22,9 +25,13 @@ export default function TrashScreen() {
   const renderItem = ({ item }: { item: FileQueryResult }) => (
     <FileRow
       file={{ ...item, size: item.size ?? null }}
-      onPress={file =>
+      onPress={file => {
+        if (isOfficeFile(file.mime)) {
+          router.push(`/(drive)/onlyoffice/${file._id}`)
+          return
+        }
         sheetRef.current?.present({ ...file, cozyMetadata: item.cozyMetadata, path: item.path })
-      }
+      }}
     />
   )
 
