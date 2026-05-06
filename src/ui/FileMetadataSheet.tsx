@@ -32,7 +32,12 @@ export interface FileMetadataSheetHandle {
   dismiss: () => void
 }
 
-export const FileMetadataSheet = forwardRef<FileMetadataSheetHandle>((_, ref) => {
+interface FileMetadataSheetProps {
+  onShareRequested?: (file: FileMetadata) => void
+}
+
+export const FileMetadataSheet = forwardRef<FileMetadataSheetHandle, FileMetadataSheetProps>(
+  ({ onShareRequested }, ref) => {
   const theme = useTheme()
   const { t } = useTranslation()
   const client = useClient()
@@ -84,6 +89,12 @@ export const FileMetadataSheet = forwardRef<FileMetadataSheetHandle>((_, ref) =>
     }
   }
 
+  const onShare = (): void => {
+    if (!file || !onShareRequested) return
+    bottomSheetRef.current?.close()
+    onShareRequested(file)
+  }
+
   return (
     <BottomSheet
       ref={bottomSheetRef}
@@ -131,6 +142,11 @@ export const FileMetadataSheet = forwardRef<FileMetadataSheetHandle>((_, ref) =>
                   {openError}
                 </Text>
               ) : null}
+              {onShareRequested ? (
+                <Button mode="outlined" onPress={onShare} icon="share-variant">
+                  {t('drive.fileMeta.share')}
+                </Button>
+              ) : null}
               <Button mode="outlined" onPress={() => bottomSheetRef.current?.close()}>
                 {t('common.close')}
               </Button>
@@ -140,7 +156,8 @@ export const FileMetadataSheet = forwardRef<FileMetadataSheetHandle>((_, ref) =>
       </BottomSheetView>
     </BottomSheet>
   )
-})
+  }
+)
 
 const Row = ({ label, value }: { label: string; value: string }) => (
   <View style={styles.row}>

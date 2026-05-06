@@ -11,6 +11,7 @@ import { LoadingState } from '@/ui/LoadingState'
 import { FileRow } from '@/ui/FileRow'
 import { FolderRow } from '@/ui/FolderRow'
 import { FileMetadataSheet, FileMetadataSheetHandle } from '@/ui/FileMetadataSheet'
+import { ShareSheet, ShareSheetHandle } from '@/ui/ShareSheet'
 import { useAuth } from '@/auth/useAuth'
 import { getErrorMessageKey } from '@/utils/errorMessages'
 import {
@@ -39,6 +40,7 @@ export default function SharedScreen() {
           ? [rawPath]
           : undefined
   const sheetRef = useRef<FileMetadataSheetHandle>(null)
+  const shareRef = useRef<ShareSheetHandle>(null)
   const [refreshing, setRefreshing] = useState(false)
 
   const isRoot = !path || path.length === 0
@@ -86,6 +88,13 @@ export default function SharedScreen() {
           folder={item}
           onPress={folder =>
             router.push(`/(drive)/shared/${[...(path ?? []), folder._id].join('/')}`)
+          }
+          onShare={folder =>
+            shareRef.current?.present({
+              _id: folder._id,
+              name: folder.name,
+              type: 'directory'
+            })
           }
         />
       )
@@ -154,7 +163,11 @@ export default function SharedScreen() {
           onEndReached={isRoot ? undefined : () => folderQuery.fetchMore?.()}
         />
       )}
-      <FileMetadataSheet ref={sheetRef} />
+      <FileMetadataSheet
+        ref={sheetRef}
+        onShareRequested={file => shareRef.current?.present(file)}
+      />
+      <ShareSheet ref={shareRef} />
     </View>
   )
 }

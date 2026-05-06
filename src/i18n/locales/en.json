@@ -33,7 +33,26 @@
       "path": "Path",
       "owner": "Owner",
       "open": "Open",
-      "downloading": "Downloading…"
+      "downloading": "Downloading…",
+      "share": "Share"
+    },
+    "share": {
+      "title": "Share",
+      "linkTitle": "Public link",
+      "linkOn": "Anyone with the link can access",
+      "linkCopy": "Copy link",
+      "linkCopied": "Link copied",
+      "recipientsTitle": "Recipients",
+      "addRecipient": "Add a recipient",
+      "emailPlaceholder": "email@example.com",
+      "readOnly": "Read only",
+      "send": "Send",
+      "remove": "Remove",
+      "errorLoad": "Could not load sharing info",
+      "errorMutate": "Operation failed",
+      "statusPending": "Pending",
+      "statusReady": "Active",
+      "statusRevoked": "Revoked"
     },
     "createFolder": {
       "title": "New folder",

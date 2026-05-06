@@ -12,6 +12,7 @@ import { LoadingState } from '@/ui/LoadingState'
 import { FileRow } from '@/ui/FileRow'
 import { FolderRow } from '@/ui/FolderRow'
 import { FileMetadataSheet, FileMetadataSheetHandle } from '@/ui/FileMetadataSheet'
+import { ShareSheet, ShareSheetHandle } from '@/ui/ShareSheet'
 import { CreateFolderDialog } from '@/ui/CreateFolderDialog'
 import { CreateOfficeFileDialog } from '@/ui/CreateOfficeFileDialog'
 import { useAuth } from '@/auth/useAuth'
@@ -44,6 +45,7 @@ export default function FilesScreen() {
           ? [rawPath]
           : undefined
   const sheetRef = useRef<FileMetadataSheetHandle>(null)
+  const shareRef = useRef<ShareSheetHandle>(null)
   const [refreshing, setRefreshing] = useState(false)
   const [createFolderVisible, setCreateFolderVisible] = useState(false)
   const [creatingClass, setCreatingClass] = useState<OfficeFileClass | null>(null)
@@ -115,6 +117,13 @@ export default function FilesScreen() {
           folder={item}
           onPress={folder =>
             router.push(`/(drive)/files/${[...(path ?? []), folder._id].join('/')}`)
+          }
+          onShare={folder =>
+            shareRef.current?.present({
+              _id: folder._id,
+              name: folder.name,
+              type: 'directory'
+            })
           }
         />
       )
@@ -198,7 +207,11 @@ export default function FilesScreen() {
           onEndReached={() => query.fetchMore?.()}
         />
       )}
-      <FileMetadataSheet ref={sheetRef} />
+      <FileMetadataSheet
+        ref={sheetRef}
+        onShareRequested={file => shareRef.current?.present(file)}
+      />
+      <ShareSheet ref={shareRef} />
       <FAB.Group
         open={fabOpen}
         visible

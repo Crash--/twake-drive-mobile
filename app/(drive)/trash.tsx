@@ -10,6 +10,7 @@ import { ErrorState } from '@/ui/ErrorState'
 import { LoadingState } from '@/ui/LoadingState'
 import { FileRow } from '@/ui/FileRow'
 import { FileMetadataSheet, FileMetadataSheetHandle } from '@/ui/FileMetadataSheet'
+import { ShareSheet, ShareSheetHandle } from '@/ui/ShareSheet'
 import { useAuth } from '@/auth/useAuth'
 import { getErrorMessageKey } from '@/utils/errorMessages'
 import { trashQuery, trashQueryAs, FileQueryResult } from '@/client/queries'
@@ -19,6 +20,7 @@ export default function TrashScreen() {
   const { t } = useTranslation()
   const { logout } = useAuth()
   const sheetRef = useRef<FileMetadataSheetHandle>(null)
+  const shareRef = useRef<ShareSheetHandle>(null)
   const query = useQuery(trashQuery(), { as: trashQueryAs })
 
   const renderItem = ({ item }: { item: FileQueryResult }) => (
@@ -57,7 +59,11 @@ export default function TrashScreen() {
           }
         />
       )}
-      <FileMetadataSheet ref={sheetRef} />
+      <FileMetadataSheet
+        ref={sheetRef}
+        onShareRequested={file => shareRef.current?.present(file)}
+      />
+      <ShareSheet ref={shareRef} />
     </View>
   )
 }

@@ -33,7 +33,26 @@
       "path": "Chemin",
       "owner": "Propriétaire",
       "open": "Ouvrir",
-      "downloading": "Téléchargement…"
+      "downloading": "Téléchargement…",
+      "share": "Partager"
+    },
+    "share": {
+      "title": "Partager",
+      "linkTitle": "Lien public",
+      "linkOn": "Toute personne disposant du lien peut accéder",
+      "linkCopy": "Copier le lien",
+      "linkCopied": "Lien copié",
+      "recipientsTitle": "Destinataires",
+      "addRecipient": "Ajouter un destinataire",
+      "emailPlaceholder": "email@exemple.com",
+      "readOnly": "Lecture seule",
+      "send": "Envoyer",
+      "remove": "Retirer",
+      "errorLoad": "Impossible de charger les informations de partage",
+      "errorMutate": "L'opération a échoué",
+      "statusPending": "En attente",
+      "statusReady": "Actif",
+      "statusRevoked": "Révoqué"
     },
     "createFolder": {
       "title": "Nouveau dossier",
