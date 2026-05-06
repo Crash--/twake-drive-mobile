@@ -1,6 +1,8 @@
 import React from 'react'
-import { StyleSheet } from 'react-native'
-import { List, useTheme } from 'react-native-paper'
+import { StyleSheet, View } from 'react-native'
+import { List } from 'react-native-paper'
+
+import { FileTypeIcon } from '@/ui/icons/FileTypeIcon'
 
 export interface FolderItem {
   _id: string
@@ -13,11 +15,16 @@ interface Props {
 }
 
 export const FolderRow = ({ folder, onPress }: Props) => {
-  const theme = useTheme()
   return (
     <List.Item
       title={folder.name}
-      left={props => <List.Icon {...props} icon="folder" color={theme.colors.primary} />}
+      // Honour the `style` Paper passes to `left` so the folder icon aligns
+      // with file thumbnails in the same list (matching column widths).
+      left={props => (
+        <View style={[props.style, styles.leftSlot]}>
+          <FileTypeIcon icon="folder" size={40} />
+        </View>
+      )}
       right={props => <List.Icon {...props} icon="chevron-right" />}
       onPress={() => onPress(folder)}
       style={styles.row}
@@ -26,5 +33,6 @@ export const FolderRow = ({ folder, onPress }: Props) => {
 }
 
 const styles = StyleSheet.create({
-  row: { paddingVertical: 4 }
+  row: { paddingVertical: 4 },
+  leftSlot: { justifyContent: 'center', alignItems: 'center', width: 40, height: 40 }
 })

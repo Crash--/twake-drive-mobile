@@ -2,7 +2,10 @@
  * Mime → icon classification, mirrored from twake-drive web's
  * src/lib/getMimeTypeIcon.js + src/lib/getFileMimetype.js.
  *
- * The 10 supported categories map directly to MaterialCommunityIcons icons.
+ * Returns a {@link FileIconKey} the consumer maps to a concrete icon
+ * component. Keys mirror cozy-ui's `FileType*` icon family so the mobile
+ * app shares the same visual vocabulary as twake-drive web.
+ *
  * For application/* mimes we regex-match the subtype against a vocabulary of
  * keywords (word/text/excel/spreadsheet/sheet/powerpoint/presentation/pdf/zip)
  * so that .docx, .ods, .pptx, etc. classify correctly without listing every
@@ -10,8 +13,23 @@
  *
  * NOTE: we deliberately do NOT use the npm `mime` / `mime-types` packages.
  * Both import node `path` / `fs`, which Metro cannot resolve in RN.
- * The extension table below covers everything our 10 categories need.
+ * The extension table below covers everything our categories need.
  */
+
+export type FileIconKey =
+  | 'audio'
+  | 'bin'
+  | 'code'
+  | 'files'
+  | 'folder'
+  | 'image'
+  | 'note'
+  | 'pdf'
+  | 'sheet'
+  | 'slide'
+  | 'text'
+  | 'video'
+  | 'zip'
 
 const EXTENSION_TO_MIME: Record<string, string> = {
   // text-like
@@ -68,7 +86,7 @@ const EXTENSION_TO_MIME: Record<string, string> = {
   yml: 'application/x-yaml'
 }
 
-const MAPPING_SUBTYPE: Record<string, string> = {
+const MAPPING_SUBTYPE: Record<string, FileIconKey> = {
   word: 'text',
   text: 'text',
   zip: 'zip',
@@ -80,18 +98,8 @@ const MAPPING_SUBTYPE: Record<string, string> = {
   powerpoint: 'slide'
 }
 
-const ICONS: Record<string, string> = {
-  audio: 'file-music',
-  bin: 'application-braces-outline',
-  code: 'code-tags',
-  image: 'file-image',
-  pdf: 'file-pdf-box',
-  slide: 'file-presentation-box',
-  sheet: 'file-excel',
-  text: 'file-document',
-  video: 'file-video',
-  zip: 'folder-zip'
-}
+// Top-level mime types that map directly to an icon key.
+const TYPE_KEYS = new Set<FileIconKey>(['audio', 'image', 'text', 'video'])
 
 const NOTE_RE = /\.cozy-note$/i
 const DOCS_NOTE_RE = /\.docs-note$/i
@@ -99,11 +107,11 @@ const DOCS_NOTE_RE = /\.docs-note$/i
 const SUBTYPE_KEYS = Object.keys(MAPPING_SUBTYPE)
 const SUBTYPE_RE = new RegExp('(' + SUBTYPE_KEYS.join('|') + ')', 'i')
 
-const classifyMime = (mimeType: string): string | undefined => {
+const classifyMime = (mimeType: string): FileIconKey | undefined => {
   const slash = mimeType.indexOf('/')
   const type = slash >= 0 ? mimeType.slice(0, slash) : mimeType
   const subtype = slash >= 0 ? mimeType.slice(slash + 1) : ''
-  if (ICONS[type]) return type
+  if (TYPE_KEYS.has(type as FileIconKey)) return type as FileIconKey
   if (type === 'application') {
     const m = subtype.match(SUBTYPE_RE)
     if (m) return MAPPING_SUBTYPE[m[1].toLowerCase()]
@@ -118,10 +126,13 @@ const lookupMimeFromName = (name: string): string => {
   return EXTENSION_TO_MIME[ext] ?? 'application/octet-stream'
 }
 
-export const getFileIcon = (type: string, mimeArg?: string, name?: string): string => {
+export const getFileIcon = (type: string, mimeArg?: string, name?: string): FileIconKey => {
   if (type === 'directory') return 'folder'
-  if (name && NOTE_RE.test(name)) return 'note-text'
-  if (name && DOCS_NOTE_RE.test(name)) return 'file-document-edit'
+  if (name && NOTE_RE.test(name)) return 'note'
+  // TODO: cozy-ui doesn't ship a dedicated icon for .docs-note
+  // (twake-drive web uses an `IconDocs` outside FileType*); fall back to
+  // the text icon for now.
+  if (name && DOCS_NOTE_RE.test(name)) return 'text'
 
   const effectiveMime =
     !mimeArg || mimeArg === 'application/octet-stream'
@@ -131,5 +142,5 @@ export const getFileIcon = (type: string, mimeArg?: string, name?: string): stri
       : mimeArg
 
   const category = classifyMime(effectiveMime)
-  return category ? ICONS[category] : 'file'
+  return category ?? 'files'
 }

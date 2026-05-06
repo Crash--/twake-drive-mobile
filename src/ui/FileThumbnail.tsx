@@ -1,9 +1,8 @@
 import React, { useEffect, useState } from 'react'
 import { Image, StyleSheet, View } from 'react-native'
-import { useTheme } from 'react-native-paper'
-import Icon from 'react-native-vector-icons/MaterialCommunityIcons'
 import { useClient } from 'cozy-client'
 
+import { FileTypeIcon } from '@/ui/icons/FileTypeIcon'
 import { getFileIcon } from '@/utils/fileIcons'
 
 interface FileLike {
@@ -34,7 +33,6 @@ const buildThumbnailUrl = (
 }
 
 export const FileThumbnail = ({ file, size = 40 }: Props) => {
-  const theme = useTheme()
   const client = useClient()
   const [errored, setErrored] = useState(false)
   const [resolvedLinks, setResolvedLinks] = useState(file.links)
@@ -90,10 +88,10 @@ export const FileThumbnail = ({ file, size = 40 }: Props) => {
     }
   }
 
-  const iconName = getFileIcon(fileType, file.mime, file.name)
+  const iconKey = getFileIcon(fileType, file.mime, file.name)
   return (
     <View style={[styles.fallback, { width: size, height: size }]}>
-      <Icon name={iconName} size={size * 0.7} color={theme.colors.onSurfaceVariant} />
+      <FileTypeIcon icon={iconKey} size={Math.round(size * 0.85)} />
     </View>
   )
 }

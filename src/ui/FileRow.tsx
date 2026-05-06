@@ -1,5 +1,5 @@
 import React from 'react'
-import { StyleSheet } from 'react-native'
+import { StyleSheet, View } from 'react-native'
 import { List } from 'react-native-paper'
 import { formatDistanceToNow } from 'date-fns'
 
@@ -33,7 +33,13 @@ export const FileRow = ({ file, onPress }: Props) => {
     <List.Item
       title={file.name}
       description={description}
-      left={() => <FileThumbnail file={file} size={40} />}
+      // Honour the `style` Paper passes to `left` (margins, etc.) so the
+      // thumbnail aligns with `<List.Icon>` columns elsewhere in the app.
+      left={props => (
+        <View style={[props.style, styles.leftSlot]}>
+          <FileThumbnail file={file} size={40} />
+        </View>
+      )}
       onPress={() => onPress(file)}
       style={styles.row}
     />
@@ -41,5 +47,6 @@ export const FileRow = ({ file, onPress }: Props) => {
 }
 
 const styles = StyleSheet.create({
-  row: { paddingVertical: 4 }
+  row: { paddingVertical: 4 },
+  leftSlot: { justifyContent: 'center', alignItems: 'center', width: 40, height: 40 }
 })
