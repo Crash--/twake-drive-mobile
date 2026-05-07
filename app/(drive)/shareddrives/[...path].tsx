@@ -1,9 +1,8 @@
-import React, { useCallback, useRef, useState } from 'react'
-import { FlatList, Linking, RefreshControl, StyleSheet, View } from 'react-native'
+import React, { useCallback, useEffect, useRef, useState } from 'react'
+import { FlatList, RefreshControl, StyleSheet, View } from 'react-native'
 import { useLocalSearchParams, useRouter } from 'expo-router'
-import { useClient, useQuery } from 'cozy-client'
+import { useClient } from 'cozy-client'
 import { useTranslation } from 'react-i18next'
-import { Snackbar } from 'react-native-paper'
 
 import { AppBar } from '@/ui/AppBar'
 import { EmptyState } from '@/ui/EmptyState'
@@ -15,18 +14,48 @@ import { FileMetadataSheet, FileMetadataSheetHandle } from '@/ui/FileMetadataShe
 import { ShareSheet, ShareSheetHandle } from '@/ui/ShareSheet'
 import { useAuth } from '@/auth/useAuth'
 import { getErrorMessageKey } from '@/utils/errorMessages'
-import { fetchShortcutTarget, fetchShortcutUrl } from '@/files/shortcuts'
-import { isShortcutFile } from '@/files/fileTypes'
 import {
-  fileByIdQuery,
-  fileByIdQueryAs,
-  folderContentsQuery,
-  folderContentsQueryAs,
-  SHARED_DRIVES_DIR_ID,
-  FileQueryResult
-} from '@/client/queries'
+  fetchSharedDriveFolder,
+  fetchSharedDrives,
+  SharedDriveEntry
+} from '@/files/sharedDrives'
+import { FileQueryResult } from '@/client/queries'
 
-const stripUrlExt = (name: string): string => name.replace(/\.url$/i, '')
+interface DriveChild {
+  _id: string
+  name: string
+  type: 'file' | 'directory'
+  size?: number | null
+  mime?: string
+  class?: string
+  updated_at?: string
+  path?: string
+  cozyMetadata?: { createdBy?: { account?: string } }
+  links?: { tiny?: string; small?: string; medium?: string; large?: string }
+}
+
+const normalizeChild = (raw: Record<string, unknown>): DriveChild => {
+  const attrs = (raw.attributes ?? {}) as Record<string, unknown>
+  const id = (raw._id ?? raw.id ?? '') as string
+  const type = (attrs.type ?? raw.type ?? 'file') as 'file' | 'directory'
+  return {
+    _id: id,
+    name: (attrs.name ?? raw.name ?? '') as string,
+    type,
+    size:
+      typeof attrs.size === 'number'
+        ? (attrs.size as number)
+        : typeof attrs.size === 'string'
+          ? Number(attrs.size)
+          : null,
+    mime: (attrs.mime ?? raw.mime) as string | undefined,
+    class: (attrs.class ?? raw.class) as string | undefined,
+    updated_at: (attrs.updated_at ?? raw.updated_at) as string | undefined,
+    path: (attrs.path ?? raw.path) as string | undefined,
+    cozyMetadata: (attrs.cozyMetadata ?? raw.cozyMetadata) as DriveChild['cozyMetadata'],
+    links: raw.links as DriveChild['links']
+  }
+}
 
 export default function SharedDrivesScreen() {
   const router = useRouter()
@@ -35,100 +64,99 @@ export default function SharedDrivesScreen() {
   const client = useClient()
   const params = useLocalSearchParams<{ path?: string | string[] }>()
   const rawPath = params.path
-  const path: string[] | undefined =
+  const path: string[] =
     rawPath === undefined
-      ? undefined
+      ? []
       : Array.isArray(rawPath)
         ? rawPath.filter(s => !!s)
         : rawPath
           ? [rawPath]
-          : undefined
+          : []
   const sheetRef = useRef<FileMetadataSheetHandle>(null)
   const shareRef = useRef<ShareSheetHandle>(null)
   const [refreshing, setRefreshing] = useState(false)
-  const [resolveError, setResolveError] = useState<string | null>(null)
 
-  const isRoot = !path || path.length === 0
-  const currentDirId = isRoot ? SHARED_DRIVES_DIR_ID : path![path!.length - 1]
+  // path semantics:
+  //   []                       → drives list (root)
+  //   [driveId, folderId, ...] → inside a drive; driveId always first segment,
+  //                              the last segment is the folder we render now.
+  const isRoot = path.length === 0
+  const driveId = path[0]
+  const currentFolderId = path[path.length - 1]
 
-  const query = useQuery(folderContentsQuery(currentDirId), {
-    as: folderContentsQueryAs(currentDirId)
-  })
+  const [drives, setDrives] = useState<SharedDriveEntry[] | null>(null)
+  const [drivesError, setDrivesError] = useState<unknown>(null)
+  const [drivesLoading, setDrivesLoading] = useState(false)
 
-  const currentDirLookup = useQuery(fileByIdQuery(currentDirId), {
-    as: fileByIdQueryAs(currentDirId),
-    enabled: !isRoot
-  })
-  const lookupData = currentDirLookup.data
-  const lookupDoc = Array.isArray(lookupData) ? lookupData[0] : lookupData
-  const currentDirName = isRoot
-    ? t('drive.sharedDrives')
-    : ((lookupDoc as { name?: string } | null | undefined)?.name ?? '')
+  const [folder, setFolder] = useState<{ name: string } | null>(null)
+  const [children, setChildren] = useState<DriveChild[] | null>(null)
+  const [folderError, setFolderError] = useState<unknown>(null)
+  const [folderLoading, setFolderLoading] = useState(false)
+
+  const reloadDrives = useCallback(async () => {
+    if (!client) return
+    setDrivesLoading(true)
+    setDrivesError(null)
+    try {
+      setDrives(await fetchSharedDrives(client))
+    } catch (e) {
+      console.error('[SharedDrives] fetchSharedDrives failed', e)
+      setDrivesError(e)
+    } finally {
+      setDrivesLoading(false)
+    }
+  }, [client])
+
+  const reloadFolder = useCallback(async () => {
+    if (!client || !driveId || !currentFolderId) return
+    setFolderLoading(true)
+    setFolderError(null)
+    try {
+      const res = await fetchSharedDriveFolder(client, driveId, currentFolderId)
+      setFolder({ name: res.folder.name })
+      setChildren(res.children.map(c => normalizeChild(c as Record<string, unknown>)))
+    } catch (e) {
+      console.error('[SharedDrives] fetchSharedDriveFolder failed', e)
+      setFolderError(e)
+    } finally {
+      setFolderLoading(false)
+    }
+  }, [client, driveId, currentFolderId])
+
+  useEffect(() => {
+    if (isRoot) void reloadDrives()
+    else void reloadFolder()
+  }, [isRoot, reloadDrives, reloadFolder])
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true)
     try {
-      await query.fetch()
+      if (isRoot) await reloadDrives()
+      else await reloadFolder()
     } finally {
       setRefreshing(false)
     }
-  }, [query])
+  }, [isRoot, reloadDrives, reloadFolder])
 
-  // Each child of shared-drives-dir is a `.url` shortcut whose
-  // metadata.target._id is the drive's root folder. We resolve lazily on tap
-  // so the listing stays cheap, then push that root folder onto our stack.
-  const onDrivePress = useCallback(
-    async (shortcut: FileQueryResult) => {
-      if (!client) return
-      try {
-        const target = await fetchShortcutTarget(client, shortcut._id)
-        if (target?._id) {
-          router.push(`/(drive)/shareddrives/${target._id}`)
-          return
-        }
-        // No same-instance target — fall back to opening the URL externally
-        // (matches the web's ExternalRedirect behavior).
-        const url = await fetchShortcutUrl(client, shortcut._id)
-        if (url) {
-          await Linking.openURL(url)
-          return
-        }
-        setResolveError(t('errors.generic'))
-      } catch (e) {
-        console.error('[SharedDrives] resolve shortcut failed', e)
-        setResolveError(t('errors.generic'))
-      }
-    },
-    [client, router, t]
+  const renderDrive = ({ item }: { item: SharedDriveEntry }) => (
+    <FolderRow
+      folder={{ _id: item.driveId, name: item.name }}
+      onPress={() => router.push(`/(drive)/shareddrives/${item.driveId}/${item.rootFolderId}`)}
+    />
   )
 
-  const renderItem = ({ item }: { item: FileQueryResult }) => {
-    if (isRoot && isShortcutFile(item)) {
-      return (
-        <FolderRow
-          folder={{ ...item, name: stripUrlExt(item.name) }}
-          onPress={() => onDrivePress(item)}
-          onShare={folder =>
-            shareRef.current?.present({
-              _id: item._id,
-              name: folder.name,
-              type: 'directory'
-            })
-          }
-        />
-      )
-    }
+  const renderChild = ({ item }: { item: DriveChild }) => {
     if (item.type === 'directory') {
       return (
         <FolderRow
-          folder={item}
-          onPress={folder =>
-            router.push(`/(drive)/shareddrives/${[...(path ?? []), folder._id].join('/')}`)
+          folder={{ _id: item._id, name: item.name }}
+          onPress={folderItem =>
+            router.push(`/(drive)/shareddrives/${[...path, folderItem._id].join('/')}`)
           }
-          onShare={folder =>
+          onShare={folderItem =>
             shareRef.current?.present({
-              _id: folder._id,
-              name: folder.name,
+              _id: folderItem._id,
+              name: folderItem.name,
               type: 'directory'
             })
           }
@@ -137,7 +165,7 @@ export default function SharedDrivesScreen() {
     }
     return (
       <FileRow
-        file={{ ...item, size: item.size ?? null }}
+        file={{ ...(item as unknown as FileQueryResult), size: item.size ?? null }}
         onPress={file =>
           sheetRef.current?.present({
             ...file,
@@ -149,32 +177,43 @@ export default function SharedDrivesScreen() {
     )
   }
 
-  const data = (query.data as FileQueryResult[] | null | undefined) ?? []
+  const isLoading = isRoot ? drivesLoading && drives === null : folderLoading && children === null
+  const hasFailed = isRoot ? !!drivesError : !!folderError
+  const errorObj = isRoot ? drivesError : folderError
+  const dataLength = isRoot ? (drives?.length ?? 0) : (children?.length ?? 0)
+  const title = isRoot ? t('drive.sharedDrives') : (folder?.name ?? '')
 
   return (
     <View style={styles.container}>
       <AppBar
-        title={currentDirName}
+        title={title}
         onBack={isRoot ? undefined : () => router.back()}
         onLogout={isRoot ? logout : undefined}
       />
-      {query.fetchStatus === 'loading' && data.length === 0 ? (
+      {isLoading ? (
         <LoadingState />
-      ) : query.fetchStatus === 'failed' ? (
+      ) : hasFailed ? (
         <ErrorState
-          message={t(getErrorMessageKey(query.lastError))}
-          onRetry={() => query.fetch()}
+          message={t(getErrorMessageKey(errorObj))}
+          onRetry={() => (isRoot ? void reloadDrives() : void reloadFolder())}
         />
-      ) : data.length === 0 ? (
-        <EmptyState message={t('drive.emptySharedDrives')} />
+      ) : dataLength === 0 ? (
+        <EmptyState
+          message={t(isRoot ? 'drive.emptySharedDrives' : 'drive.emptyFolder')}
+        />
+      ) : isRoot ? (
+        <FlatList
+          data={drives ?? []}
+          keyExtractor={item => item.driveId}
+          renderItem={renderDrive}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+        />
       ) : (
         <FlatList
-          data={data}
+          data={children ?? []}
           keyExtractor={item => item._id}
-          renderItem={renderItem}
+          renderItem={renderChild}
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
-          onEndReachedThreshold={0.5}
-          onEndReached={() => query.fetchMore?.()}
         />
       )}
       <FileMetadataSheet
@@ -182,13 +221,6 @@ export default function SharedDrivesScreen() {
         onShareRequested={file => shareRef.current?.present(file)}
       />
       <ShareSheet ref={shareRef} />
-      <Snackbar
-        visible={!!resolveError}
-        onDismiss={() => setResolveError(null)}
-        duration={3000}
-      >
-        {resolveError ?? ''}
-      </Snackbar>
     </View>
   )
 }
