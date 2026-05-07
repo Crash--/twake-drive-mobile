@@ -42,6 +42,8 @@
       "linkOn": "Anyone with the link can access",
       "linkCopy": "Copy link",
       "linkCopied": "Link copied",
+      "linkRightsReader": "Reader",
+      "linkRightsEditor": "Editor",
       "recipientsTitle": "Recipients",
       "addRecipient": "Add a recipient",
       "suggestionsLoading": "Looking up contacts…",

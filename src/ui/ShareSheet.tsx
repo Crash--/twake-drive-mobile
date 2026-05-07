@@ -1,6 +1,7 @@
 import React, {
   forwardRef,
   useCallback,
+  useEffect,
   useImperativeHandle,
   useMemo,
   useRef,
@@ -13,6 +14,7 @@ import {
   Button,
   Divider,
   IconButton,
+  SegmentedButtons,
   Snackbar,
   Switch,
   Text,
@@ -32,12 +34,14 @@ import {
 import { filterContactSuggestions } from '@/files/contactSuggestions'
 
 import {
+  LinkEditingRights,
   SharingMember,
   absoluteMemberIndex,
   addRecipient,
   buildPublicLinkUrl,
   createPublicLink,
   createSharingForFile,
+  getLinkEditingRights,
   getRecipients,
   revokePublicLink,
   revokeRecipientAtIndex
@@ -94,6 +98,11 @@ export const ShareSheet = forwardRef<ShareSheetHandle>((_, ref) => {
   const [showAddForm, setShowAddForm] = useState(false)
   const [emailInput, setEmailInput] = useState('')
   const [readOnlyInput, setReadOnlyInput] = useState(true)
+  // Editor/Viewer choice for the public link. Mirrors twake-drive web's
+  // ShareRestrictionModal/BoxEditingRights. Defaults to readOnly to match the
+  // web default; kept in sync with `linkPermission` via the effect below so
+  // re-opening the sheet on a file with an existing editor link reflects it.
+  const [editingRights, setEditingRights] = useState<LinkEditingRights>('readOnly')
 
   // Read sharing + link from the global SharingProvider — no local fetch.
   // The provider has already fetched both once at drive layout mount, and
@@ -108,6 +117,15 @@ export const ShareSheet = forwardRef<ShareSheetHandle>((_, ref) => {
   const stackUri = client?.getStackClient()?.uri as string | undefined
   const linkUrl =
     linkPermission && stackUri ? buildPublicLinkUrl(stackUri, linkPermission) : null
+
+  // Re-sync the segmented control whenever the loaded permission changes:
+  // - opening the sheet on a fresh file → resets to 'readOnly'
+  // - opening on a file that already has an editor link → starts at 'write'
+  // - after a successful swap (revoke+recreate) refreshSharings updates
+  //   linkPermission, which lands us back here in the matching state
+  useEffect(() => {
+    setEditingRights(getLinkEditingRights(linkPermission))
+  }, [linkPermission])
 
   useImperativeHandle(ref, () => ({
     present: (f: ShareSheetFile) => {
@@ -128,7 +146,7 @@ export const ShareSheet = forwardRef<ShareSheetHandle>((_, ref) => {
     setError(null)
     try {
       if (next) {
-        await createPublicLink(client, file)
+        await createPublicLink(client, file, editingRights)
       } else {
         await revokePublicLink(client, file)
       }
@@ -136,6 +154,37 @@ export const ShareSheet = forwardRef<ShareSheetHandle>((_, ref) => {
     } catch (e) {
       console.error('[ShareSheet] toggle link failed', e)
       setError(t('drive.share.errorMutate'))
+    } finally {
+      setLinkMutating(false)
+      setMutating(false)
+    }
+  }
+
+  const onChangeEditingRights = async (next: LinkEditingRights): Promise<void> => {
+    if (next === editingRights) return
+    // Always echo the local state immediately so the segmented control feels
+    // responsive even when the link doesn't yet exist.
+    setEditingRights(next)
+    if (!linkPermission || !client || !file) return // local-only change before link exists
+    if (linkMutating) return
+    // Existing link: swap rights via revoke + recreate. This changes the
+    // public URL — the simplest correct path until cozy-stack exposes a way
+    // to mutate `attributes.permissions[*].verbs` in place.
+    // TODO: replace with PermissionCollection.add/destroy verbs once available
+    //       to avoid invalidating the existing sharecode.
+    setLinkMutating(true)
+    setMutating(true)
+    setError(null)
+    try {
+      await revokePublicLink(client, file)
+      await createPublicLink(client, file, next)
+      await refreshSharings()
+    } catch (e) {
+      console.error('[ShareSheet] swap link rights failed', e)
+      setError(t('drive.share.errorMutate'))
+      // Revert the local state since the swap failed; the effect on
+      // linkPermission will re-confirm but doing it here avoids a flash.
+      setEditingRights(getLinkEditingRights(linkPermission))
     } finally {
       setLinkMutating(false)
       setMutating(false)
@@ -283,6 +332,31 @@ export const ShareSheet = forwardRef<ShareSheetHandle>((_, ref) => {
                         />
                       )}
                     </View>
+                  </View>
+                  <View style={styles.editingRightsRow}>
+                    <SegmentedButtons
+                      value={editingRights}
+                      onValueChange={(v) =>
+                        void onChangeEditingRights(v as LinkEditingRights)
+                      }
+                      density="small"
+                      buttons={[
+                        {
+                          value: 'readOnly',
+                          label: t('drive.share.linkRightsReader'),
+                          icon: 'eye-outline',
+                          disabled: linkMutating || initialLoading,
+                          accessibilityLabel: t('drive.share.linkRightsReader')
+                        },
+                        {
+                          value: 'write',
+                          label: t('drive.share.linkRightsEditor'),
+                          icon: 'pencil-outline',
+                          disabled: linkMutating || initialLoading,
+                          accessibilityLabel: t('drive.share.linkRightsEditor')
+                        }
+                      ]}
+                    />
                   </View>
                   {linkPermission ? (
                     <>
@@ -517,6 +591,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center'
   },
   linkText: { flex: 1 },
+  editingRightsRow: { paddingTop: 4 },
   recipientRow: {
     flexDirection: 'row',
     alignItems: 'center',

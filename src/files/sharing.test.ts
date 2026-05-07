@@ -6,6 +6,7 @@ import {
   createSharingForFile,
   findPublicLinkForFile,
   findSharingForFile,
+  getLinkEditingRights,
   getRecipients,
   revokePublicLink,
   revokeRecipientAtIndex
@@ -293,14 +294,98 @@ describe('revokeRecipientAtIndex', () => {
 })
 
 describe('createPublicLink', () => {
-  it('calls createSharingLink with the file as a doc reference and tiny:true to request a shortcode', async () => {
+  it('defaults to read-only verbs when no editingRights argument is passed', async () => {
     const createSharingLink = jest.fn().mockResolvedValue({ data: { _id: 'p1' } })
     const client = makeClient({ 'io.cozy.permissions': { createSharingLink } })
     await createPublicLink(client, { _id: 'file-1', type: 'file' })
     expect(createSharingLink).toHaveBeenCalledWith(
       { _id: 'file-1', _type: 'io.cozy.files', type: 'file' },
-      { tiny: true }
+      { tiny: true, verbs: ['GET'] }
     )
+  })
+
+  it('sends the write verb set when editingRights is "write"', async () => {
+    const createSharingLink = jest.fn().mockResolvedValue({ data: { _id: 'p1' } })
+    const client = makeClient({ 'io.cozy.permissions': { createSharingLink } })
+    await createPublicLink(client, { _id: 'file-1', type: 'file' }, 'write')
+    expect(createSharingLink).toHaveBeenCalledWith(
+      { _id: 'file-1', _type: 'io.cozy.files', type: 'file' },
+      { tiny: true, verbs: ['GET', 'POST', 'PUT', 'PATCH'] }
+    )
+  })
+
+  it('sends the read-only verb set when editingRights is explicitly "readOnly"', async () => {
+    const createSharingLink = jest.fn().mockResolvedValue({ data: { _id: 'p1' } })
+    const client = makeClient({ 'io.cozy.permissions': { createSharingLink } })
+    await createPublicLink(client, { _id: 'file-1', type: 'file' }, 'readOnly')
+    expect(createSharingLink).toHaveBeenCalledWith(
+      { _id: 'file-1', _type: 'io.cozy.files', type: 'file' },
+      { tiny: true, verbs: ['GET'] }
+    )
+  })
+})
+
+describe('getLinkEditingRights', () => {
+  it('returns "readOnly" for null', () => {
+    expect(getLinkEditingRights(null)).toBe('readOnly')
+  })
+
+  it('returns "readOnly" for undefined', () => {
+    expect(getLinkEditingRights(undefined)).toBe('readOnly')
+  })
+
+  it('returns "readOnly" when verbs are GET-only', () => {
+    expect(
+      getLinkEditingRights({
+        _id: 'p1',
+        attributes: { permissions: { files: { verbs: ['GET'] } } }
+      })
+    ).toBe('readOnly')
+  })
+
+  it('returns "readOnly" when verbs are missing', () => {
+    expect(
+      getLinkEditingRights({
+        _id: 'p1',
+        attributes: { permissions: { files: {} } }
+      })
+    ).toBe('readOnly')
+  })
+
+  it('returns "write" when any verb is non-GET (POST)', () => {
+    expect(
+      getLinkEditingRights({
+        _id: 'p1',
+        attributes: { permissions: { files: { verbs: ['GET', 'POST'] } } }
+      })
+    ).toBe('write')
+  })
+
+  it('returns "write" when verbs include PATCH', () => {
+    expect(
+      getLinkEditingRights({
+        _id: 'p1',
+        attributes: { permissions: { files: { verbs: ['GET', 'POST', 'PUT', 'PATCH'] } } }
+      })
+    ).toBe('write')
+  })
+
+  it('returns "write" when verbs include ALL', () => {
+    expect(
+      getLinkEditingRights({
+        _id: 'p1',
+        attributes: { permissions: { files: { verbs: ['ALL'] } } }
+      })
+    ).toBe('write')
+  })
+
+  it('reads from top-level permissions when attributes is missing (normalizer flatten)', () => {
+    expect(
+      getLinkEditingRights({
+        _id: 'p1',
+        permissions: { files: { verbs: ['GET', 'PUT'] } }
+      })
+    ).toBe('write')
   })
 })
 

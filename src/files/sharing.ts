@@ -6,6 +6,15 @@ const SHARINGS_DOCTYPE = 'io.cozy.sharings'
 const PERMISSIONS_DOCTYPE = 'io.cozy.permissions'
 const CONTACTS_DOCTYPE = 'io.cozy.contacts'
 
+// Verb sets for public links. Mirrors twake-drive web's
+// `packages/cozy-sharing/src/components/ShareRestrictionModal/helpers.js`:
+// readers get GET only, editors get GET/POST/PUT/PATCH (DELETE is intentionally
+// excluded — same shape as the web ShareRestrictionModal/BoxEditingRights).
+export const READ_ONLY_PERMS = ['GET'] as const
+export const WRITE_PERMS = ['GET', 'POST', 'PUT', 'PATCH'] as const
+
+export type LinkEditingRights = 'readOnly' | 'write'
+
 // Sharing rule from `io.cozy.sharings`. The Cozy stack normalizer flattens
 // `attributes` to the top level of the doc, so callers may see fields in
 // either place — we read from `attributes` defensively.
@@ -201,16 +210,46 @@ export const buildPublicLinkUrl = (
 
 /**
  * Create a public link for a file or folder.
+ *
+ * `editingRights` controls the verb set granted by the link permission. The
+ * default mirrors cozy-sharing web (`'readOnly'`) — callers that want an
+ * editor link must opt in.
  */
 export const createPublicLink = async (
   client: CozyClient,
-  file: { _id: string; type?: 'file' | 'directory' }
+  file: { _id: string; type?: 'file' | 'directory' },
+  editingRights: LinkEditingRights = 'readOnly'
 ): Promise<PublicLinkPermission> => {
   const document = { _id: file._id, _type: FILES_DOCTYPE, type: file.type }
+  const verbs = editingRights === 'write' ? [...WRITE_PERMS] : [...READ_ONLY_PERMS]
   // tiny: true asks the cozy-stack to also generate a shortcode alongside the
   // long sharecode. buildPublicLinkUrl prefers the shortcode when available.
-  const result = await getPermissions(client).createSharingLink(document, { tiny: true })
+  const result = await getPermissions(client).createSharingLink(document, {
+    tiny: true,
+    verbs
+  })
   return result.data
+}
+
+/**
+ * Derive the current editing rights from an existing public link permission.
+ *
+ * Mirrors cozy-sharing's `getSharingType`/`isReadOnly` heuristic: any verb
+ * other than `'GET'` (POST/PUT/PATCH/DELETE/ALL) → editor; otherwise reader.
+ * Missing permission, missing entries, or empty verb arrays default to
+ * `'readOnly'` so we don't accidentally surface "Editor" for a half-loaded
+ * permission doc.
+ */
+export const getLinkEditingRights = (
+  permission: PublicLinkPermission | null | undefined
+): LinkEditingRights => {
+  if (!permission) return 'readOnly'
+  const perms = permission.attributes?.permissions ?? permission.permissions ?? {}
+  for (const entry of Object.values(perms)) {
+    const verbs = entry.verbs ?? []
+    if (verbs.some(v => v !== 'GET')) return 'write'
+  }
+  return 'readOnly'
 }
 
 /**
