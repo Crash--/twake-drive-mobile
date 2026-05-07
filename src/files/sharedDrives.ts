@@ -23,6 +23,14 @@ interface MinimalStackClient {
   fetchJSON: (method: string, path: string) => Promise<unknown>
 }
 
+interface RawTarget {
+  _id?: string
+  id?: string
+  _type?: string
+  doctype?: string
+  app?: string
+}
+
 interface RawShortcut {
   _id?: string
   id?: string
@@ -30,11 +38,30 @@ interface RawShortcut {
   name?: string
   type?: string
   class?: string
-  metadata?: { target?: { _id?: string } }
+  metadata?: { target?: RawTarget }
+  attributes?: {
+    name?: string
+    class?: string
+    metadata?: { target?: RawTarget }
+    relationships?: {
+      referenced_by?: { data?: Array<{ id?: string; type?: string }> }
+    }
+  }
   relationships?: {
     referenced_by?: { data?: Array<{ id?: string; type?: string }> }
   }
 }
+
+const readRelationships = (
+  sc: RawShortcut
+): { referenced_by?: { data?: Array<{ id?: string; type?: string }> } } | undefined =>
+  sc.relationships ?? sc.attributes?.relationships
+
+const readMetadataTarget = (sc: RawShortcut): RawTarget | undefined =>
+  sc.metadata?.target ?? sc.attributes?.metadata?.target
+
+const readName = (sc: RawShortcut): string => sc.name ?? sc.attributes?.name ?? ''
+const readClass = (sc: RawShortcut): string | undefined => sc.class ?? sc.attributes?.class
 
 /**
  * Build the list of drives shared with the current user.
@@ -59,25 +86,29 @@ export const fetchSharedDrives = async (client: CozyClient): Promise<SharedDrive
     '[fetchSharedDrives] received',
     shortcuts.length,
     'item(s); sample:',
-    shortcuts[0] ? JSON.stringify(shortcuts[0]).slice(0, 800) : '(empty)'
+    shortcuts[0] ? JSON.stringify(shortcuts[0]).slice(0, 1000) : '(empty)'
   )
   return shortcuts
     .map((sc): SharedDriveEntry | null => {
       const shortcutId = sc._id ?? sc.id
-      const driveId = sc.relationships?.referenced_by?.data?.[0]?.id
-      const rootFolderId = sc.metadata?.target?._id
-      if (!shortcutId) return null
+      const cls = readClass(sc)
       // Be permissive about class — some stacks/responses may not surface it.
-      if (sc.class && sc.class !== 'shortcut') return null
+      if (cls && cls !== 'shortcut') return null
+      const driveId = readRelationships(sc)?.referenced_by?.data?.[0]?.id
+      const rootTarget = readMetadataTarget(sc)
+      const rootFolderId = rootTarget?._id ?? rootTarget?.id
+      if (!shortcutId) return null
       if (!driveId || !rootFolderId) {
         console.warn('[fetchSharedDrives] dropping', shortcutId, {
           hasDriveId: !!driveId,
           hasRootFolderId: !!rootFolderId,
-          class: sc.class
+          class: cls,
+          relationshipsPath: sc.relationships ? 'top' : sc.attributes?.relationships ? 'attrs' : 'none',
+          metadataPath: sc.metadata ? 'top' : sc.attributes?.metadata ? 'attrs' : 'none'
         })
         return null
       }
-      const rawName = sc.name ?? ''
+      const rawName = readName(sc)
       const name = rawName.replace(/\.url$/i, '') || rawName
       return { shortcutId, driveId, rootFolderId, name }
     })
