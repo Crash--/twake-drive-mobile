@@ -1,5 +1,5 @@
 import React, { forwardRef, useImperativeHandle, useRef, useState } from 'react'
-import { StyleSheet, View } from 'react-native'
+import { Linking, StyleSheet, View } from 'react-native'
 import BottomSheet, { BottomSheetView } from '@gorhom/bottom-sheet'
 import { Button, Divider, Text, useTheme } from 'react-native-paper'
 import { format } from 'date-fns'
@@ -9,7 +9,8 @@ import { useRouter } from 'expo-router'
 
 import { formatFileSize } from '@/utils/formatters'
 import { openFileNatively } from '@/files/openFile'
-import { isCozyNoteFile, isDocsNoteFile, isOfficeFile } from '@/files/fileTypes'
+import { isCozyNoteFile, isDocsNoteFile, isOfficeFile, isShortcutFile } from '@/files/fileTypes'
+import { fetchShortcutUrl } from '@/files/shortcuts'
 import { FileThumbnail } from './FileThumbnail'
 
 export interface FileMetadata {
@@ -71,6 +72,22 @@ export const FileMetadataSheet = forwardRef<FileMetadataSheetHandle, FileMetadat
     if (isOfficeFile(file.mime)) {
       bottomSheetRef.current?.close()
       router.push(`/(drive)/onlyoffice/${file._id}`)
+      return
+    }
+    if (isShortcutFile(file)) {
+      setOpening(true)
+      setOpenError(null)
+      try {
+        const url = await fetchShortcutUrl(client, file._id)
+        if (!url) throw new Error('Shortcut has no target URL')
+        bottomSheetRef.current?.close()
+        await Linking.openURL(url)
+      } catch (e) {
+        console.error('[FileMetadataSheet] open shortcut failed', e)
+        setOpenError((e as Error).message ?? 'open failed')
+      } finally {
+        setOpening(false)
+      }
       return
     }
     setOpening(true)

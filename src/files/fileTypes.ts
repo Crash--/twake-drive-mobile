@@ -13,6 +13,18 @@ export const isCozyNoteFile = (name?: string): boolean =>
 export const isDocsNoteFile = (name?: string): boolean =>
   !!name && /\.docs-note$/i.test(name)
 
+/**
+ * Returns true for `.url` shortcuts. Mirrors `isShortcut` from
+ * `cozy-client/dist/models/file`: cozy-stack tags these files with
+ * `class === 'shortcut'`. We also fall back to the extension when the class
+ * is missing (older stacks, recent-files endpoint).
+ */
+export const isShortcutFile = (file?: { class?: string; name?: string }): boolean => {
+  if (!file) return false
+  if (file.class === 'shortcut') return true
+  return !!file.name && /\.url$/i.test(file.name)
+}
+
 export const isOfficeFile = (mime?: string): boolean => {
   if (!mime) return false
   const officeMimes = [

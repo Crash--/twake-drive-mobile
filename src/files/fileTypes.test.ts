@@ -1,4 +1,4 @@
-import { isCozyNoteFile, isDocsNoteFile, isOfficeFile } from './fileTypes'
+import { isCozyNoteFile, isDocsNoteFile, isOfficeFile, isShortcutFile } from './fileTypes'
 
 describe('isCozyNoteFile', () => {
   it('returns false for missing name', () => {
@@ -76,5 +76,29 @@ describe('isOfficeFile', () => {
     expect(isOfficeFile('application/vnd.oasis.opendocument.text')).toBe(true)
     expect(isOfficeFile('application/vnd.oasis.opendocument.spreadsheet')).toBe(true)
     expect(isOfficeFile('application/vnd.oasis.opendocument.presentation')).toBe(true)
+  })
+})
+
+describe('isShortcutFile', () => {
+  it('returns false for missing input', () => {
+    expect(isShortcutFile()).toBe(false)
+    expect(isShortcutFile(undefined)).toBe(false)
+    expect(isShortcutFile({})).toBe(false)
+  })
+
+  it('returns true when class is "shortcut"', () => {
+    expect(isShortcutFile({ class: 'shortcut', name: 'Whatever' })).toBe(true)
+    expect(isShortcutFile({ class: 'shortcut' })).toBe(true)
+  })
+
+  it('returns true when name ends with .url (case-insensitive) without class', () => {
+    expect(isShortcutFile({ name: 'github.url' })).toBe(true)
+    expect(isShortcutFile({ name: 'My Link.URL' })).toBe(true)
+  })
+
+  it('returns false when class is non-shortcut and name does not end in .url', () => {
+    expect(isShortcutFile({ class: 'image', name: 'pic.png' })).toBe(false)
+    expect(isShortcutFile({ name: 'shortcut' })).toBe(false)
+    expect(isShortcutFile({ name: 'foo.url.txt' })).toBe(false)
   })
 })
