@@ -4,6 +4,7 @@ import React, {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState
 } from 'react'
 import { useClient } from 'cozy-client'
@@ -38,13 +39,19 @@ export interface FileSharingStatus {
 interface ContextValue {
   loaded: boolean
   byId: Map<string, FileSharingEntry>
-  refresh: () => void
+  /**
+   * Trigger a re-fetch and return a promise that resolves once the provider
+   * has applied the fresh data. Callers can await this to keep their
+   * post-mutation spinners visible until the global state actually reflects
+   * the new server state.
+   */
+  refresh: () => Promise<void>
 }
 
 export const SharingContext = createContext<ContextValue>({
   loaded: false,
   byId: new Map(),
-  refresh: () => {}
+  refresh: () => Promise.resolve()
 })
 
 const sharingFilesIds = (s: SharingDoc): string[] => {
@@ -144,6 +151,10 @@ export const SharingProvider = ({ children }: { children: React.ReactNode }) => 
   const [byId, setById] = useState<Map<string, FileSharingEntry>>(new Map())
   const [loaded, setLoaded] = useState(false)
   const [refreshTick, setRefreshTick] = useState(0)
+  // Pending awaiters for the in-flight (or next) refresh. We resolve all of
+  // them once the useEffect below applies the fresh data, so callers that
+  // awaited refresh() know the context is up to date.
+  const pendingResolversRef = useRef<(() => void)[]>([])
 
   useEffect(() => {
     if (!client) return
@@ -169,6 +180,12 @@ export const SharingProvider = ({ children }: { children: React.ReactNode }) => 
       } catch (e) {
         console.error('[SharingProvider] load failed', e)
         if (!cancelled) setLoaded(true)
+      } finally {
+        if (!cancelled) {
+          const resolvers = pendingResolversRef.current
+          pendingResolversRef.current = []
+          for (const resolve of resolvers) resolve()
+        }
       }
     }
 
@@ -178,7 +195,13 @@ export const SharingProvider = ({ children }: { children: React.ReactNode }) => 
     }
   }, [client, refreshTick])
 
-  const refresh = useCallback(() => setRefreshTick(t => t + 1), [])
+  const refresh = useCallback((): Promise<void> => {
+    const promise = new Promise<void>(resolve => {
+      pendingResolversRef.current.push(resolve)
+    })
+    setRefreshTick(t => t + 1)
+    return promise
+  }, [])
 
   const value = useMemo<ContextValue>(() => ({ loaded, byId, refresh }), [loaded, byId, refresh])
 
@@ -198,9 +221,11 @@ export const useFileSharingStatus = (fileId: string | undefined): FileSharingSta
 
 /**
  * Returns a stable function the ShareSheet can call after mutations to ask
- * the provider to re-fetch and rebuild its map.
+ * the provider to re-fetch and rebuild its map. The returned promise
+ * resolves once the next fetch is applied to the context.
  */
-export const useRefreshSharings = (): (() => void) => useContext(SharingContext).refresh
+export const useRefreshSharings = (): (() => Promise<void>) =>
+  useContext(SharingContext).refresh
 
 /**
  * Read-side hook for the ShareSheet — returns the full entry plus the

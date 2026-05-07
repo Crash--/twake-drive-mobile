@@ -132,7 +132,7 @@ export const ShareSheet = forwardRef<ShareSheetHandle>((_, ref) => {
       } else {
         await revokePublicLink(client, file)
       }
-      refreshSharings()
+      await refreshSharings()
     } catch (e) {
       console.error('[ShareSheet] toggle link failed', e)
       setError(t('drive.share.errorMutate'))
@@ -166,7 +166,7 @@ export const ShareSheet = forwardRef<ShareSheetHandle>((_, ref) => {
       }
       setEmailInput('')
       setShowAddForm(false)
-      refreshSharings()
+      await refreshSharings()
     } catch (e) {
       console.error('[ShareSheet] add recipient failed', e)
       setError(t('drive.share.errorMutate'))
@@ -183,7 +183,7 @@ export const ShareSheet = forwardRef<ShareSheetHandle>((_, ref) => {
     setError(null)
     try {
       await revokeRecipientAtIndex(client, sharing, memberIndex)
-      refreshSharings()
+      await refreshSharings()
     } catch (e) {
       console.error('[ShareSheet] revoke recipient failed', e)
       setError(t('drive.share.errorMutate'))
