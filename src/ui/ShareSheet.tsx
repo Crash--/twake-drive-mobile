@@ -76,10 +76,14 @@ export const ShareSheet = forwardRef<ShareSheetHandle>((_, ref) => {
   const bottomSheetRef = useRef<BottomSheet>(null)
 
   // Flags mirrored from twake-drive web's ShareFileView / ShareDisplayedFolderView:
-  // - sharing.generate-link-button.enabled gates the public link toggle (false → hide).
-  // - sharing.auto-open-settings.enabled is a no-op here for now since the mobile sheet
-  //   doesn't have an "advanced settings" panel; recorded for parity.
-  const generateLinkEnabled = !!useFlag('sharing.generate-link-button.enabled')
+  // - sharing.generate-link-button.enabled gates the public link toggle. The web
+  //   default is "visible": cozy-sharing's modal only HIDES the button when the
+  //   flag is explicitly false. We mirror that — null/undefined/true → show,
+  //   false → hide.
+  // - sharing.auto-open-settings.enabled is a no-op here for now since the mobile
+  //   sheet doesn't have an "advanced settings" panel; recorded for parity.
+  const generateLinkFlag = useFlag('sharing.generate-link-button.enabled')
+  const generateLinkEnabled = generateLinkFlag !== false
   // TODO: when an advanced-settings panel is added, gate it on this flag too.
   // const autoOpenSettingsEnabled = !!useFlag('sharing.auto-open-settings.enabled')
 
