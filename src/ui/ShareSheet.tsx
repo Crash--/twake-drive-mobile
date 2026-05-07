@@ -2,10 +2,11 @@ import React, {
   forwardRef,
   useCallback,
   useImperativeHandle,
+  useMemo,
   useRef,
   useState
 } from 'react'
-import { ScrollView, StyleSheet, View } from 'react-native'
+import { Pressable, ScrollView, StyleSheet, View } from 'react-native'
 import BottomSheet, { BottomSheetView } from '@gorhom/bottom-sheet'
 import {
   ActivityIndicator,
@@ -19,10 +20,16 @@ import {
   useTheme
 } from 'react-native-paper'
 import { useTranslation } from 'react-i18next'
-import { useClient } from 'cozy-client'
+import { useClient, useQuery } from 'cozy-client'
 import * as Clipboard from 'expo-clipboard'
 
 import { useFlag } from '@/client/useFlag'
+import {
+  ContactQueryResult,
+  reachableContactsQuery,
+  reachableContactsQueryAs
+} from '@/client/queries'
+import { filterContactSuggestions } from '@/files/contactSuggestions'
 
 import {
   PublicLinkPermission,
@@ -200,6 +207,26 @@ export const ShareSheet = forwardRef<ShareSheetHandle>((_, ref) => {
 
   const recipients = getRecipients(sharing)
 
+  // Contact autocomplete: only fetch when the add form is visible. Mirrors
+  // cozy-sharing's web ShareAutosuggest — client-side filtering of the
+  // reachable contacts collection.
+  const contactsQuery = useQuery(reachableContactsQuery(), {
+    as: reachableContactsQueryAs,
+    enabled: showAddForm
+  })
+  const contacts = useMemo(
+    () => (contactsQuery.data as ContactQueryResult[] | null | undefined) ?? [],
+    [contactsQuery.data]
+  )
+  const excludeEmails = useMemo(
+    () => recipients.map(r => r.email).filter((e): e is string => !!e),
+    [recipients]
+  )
+  const suggestions = useMemo(
+    () => filterContactSuggestions(contacts, emailInput, excludeEmails),
+    [contacts, emailInput, excludeEmails]
+  )
+
   const statusLabel = (status: string): string => {
     switch (status) {
       case 'pending':
@@ -324,6 +351,68 @@ export const ShareSheet = forwardRef<ShareSheetHandle>((_, ref) => {
                     keyboardType="email-address"
                     style={styles.emailInput}
                   />
+                  {contactsQuery.fetchStatus === 'loading' && contacts.length === 0 ? (
+                    <Text variant="bodySmall" style={styles.suggestionsHint}>
+                      {t('drive.share.suggestionsLoading')}
+                    </Text>
+                  ) : null}
+                  {suggestions.length > 0 ? (
+                    <View
+                      style={[
+                        styles.suggestionsBox,
+                        { borderColor: theme.colors.outlineVariant }
+                      ]}
+                    >
+                      <ScrollView
+                        keyboardShouldPersistTaps="handled"
+                        nestedScrollEnabled
+                        style={styles.suggestionsScroll}
+                      >
+                        {suggestions.map(s => (
+                          <Pressable
+                            key={s._id}
+                            onPress={() => setEmailInput(s.email)}
+                            style={({ pressed }) => [
+                              styles.suggestionRow,
+                              pressed && {
+                                backgroundColor: theme.colors.surfaceVariant
+                              }
+                            ]}
+                            accessibilityRole="button"
+                            accessibilityLabel={`${s.displayName} ${s.email}`}
+                          >
+                            <View
+                              style={[
+                                styles.suggestionAvatar,
+                                { backgroundColor: theme.colors.primaryContainer }
+                              ]}
+                            >
+                              <Text
+                                style={[
+                                  styles.suggestionInitial,
+                                  { color: theme.colors.onPrimaryContainer }
+                                ]}
+                              >
+                                {s.displayName.charAt(0).toUpperCase()}
+                              </Text>
+                            </View>
+                            <View style={styles.suggestionText}>
+                              <Text variant="bodyMedium" numberOfLines={1}>
+                                {s.displayName}
+                              </Text>
+                              <Text
+                                variant="bodySmall"
+                                numberOfLines={1}
+                                style={styles.suggestionEmail}
+                              >
+                                {s.email}
+                              </Text>
+                            </View>
+                          </Pressable>
+                        ))}
+                      </ScrollView>
+                    </View>
+                  ) : null}
                   <View style={styles.readOnlyRow}>
                     <Text>{t('drive.share.readOnly')}</Text>
                     <Switch
@@ -442,6 +531,30 @@ const styles = StyleSheet.create({
   recipientStatus: { opacity: 0.6 },
   addForm: { gap: 8, paddingTop: 8 },
   emailInput: {},
+  suggestionsHint: { opacity: 0.7 },
+  suggestionsBox: {
+    borderWidth: StyleSheet.hairlineWidth,
+    borderRadius: 8,
+    overflow: 'hidden'
+  },
+  suggestionsScroll: { maxHeight: 200 },
+  suggestionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    gap: 12
+  },
+  suggestionAvatar: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center'
+  },
+  suggestionInitial: { fontWeight: '600' },
+  suggestionText: { flex: 1 },
+  suggestionEmail: { opacity: 0.7 },
   readOnlyRow: {
     flexDirection: 'row',
     alignItems: 'center',

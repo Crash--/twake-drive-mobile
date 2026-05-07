@@ -70,3 +70,30 @@ export const filesByIdsQuery = (ids: string[]): QueryDefinition =>
   Q('io.cozy.files').getByIds(ids).sortBy([{ type: 'asc' }, { name: 'asc' }])
 export const filesByIdsQueryAs = (ids: string[]): string =>
   `io.cozy.files/byIds/${ids.join('-')}`
+
+// Reachable contacts: those that have at least one email or one cozy URL and
+// are not trashed. Mirrors cozy-sharing's `buildReachableContactsQuery` so the
+// mobile autocomplete uses the same dataset as the web ShareAutosuggest.
+export const reachableContactsQuery = (): QueryDefinition =>
+  Q('io.cozy.contacts')
+    .where({ _id: { $gt: null } })
+    .partialIndex({
+      trashed: { $or: [{ $eq: false }, { $exists: false }] },
+      $or: [
+        { cozy: { $not: { $size: 0 } } },
+        { email: { $not: { $size: 0 } } }
+      ]
+    })
+    .indexFields(['_id'])
+    .limitBy(1000)
+
+export const reachableContactsQueryAs = 'io.cozy.contacts/reachable'
+
+export interface ContactQueryResult {
+  _id: string
+  _type: string
+  fullname?: string
+  name?: { givenName?: string; familyName?: string }
+  email?: { address: string; primary?: boolean; type?: string }[]
+  cozy?: { url: string; primary?: boolean }[]
+}

@@ -44,6 +44,7 @@
       "linkCopied": "Lien copié",
       "recipientsTitle": "Destinataires",
       "addRecipient": "Ajouter un destinataire",
+      "suggestionsLoading": "Recherche dans les contacts…",
       "emailPlaceholder": "email@exemple.com",
       "readOnly": "Lecture seule",
       "send": "Envoyer",
