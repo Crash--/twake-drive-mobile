@@ -2,6 +2,17 @@ import { Q, QueryDefinition } from 'cozy-client'
 
 export const ROOT_DIR_ID = 'io.cozy.files.root-dir'
 export const TRASH_DIR_ID = 'io.cozy.files.trash-dir'
+// Virtual directory the cozy-stack uses to gather shared drives. It shows up
+// at the root of `io.cozy.files` listings; twake-drive web hides it (along
+// with the trash-dir) via a partialIndex on the folder query. We filter the
+// same two IDs out client-side here.
+export const SHARED_DRIVES_DIR_ID = 'io.cozy.files.shared-drives-dir'
+
+/**
+ * IDs of virtual / system directories that should never appear in a regular
+ * folder listing. Mirrors twake-drive web's filtering convention.
+ */
+export const HIDDEN_ROOT_DIR_IDS: readonly string[] = [SHARED_DRIVES_DIR_ID, TRASH_DIR_ID]
 
 export interface FileQueryResult {
   _id: string

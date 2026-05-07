@@ -27,6 +27,7 @@ import {
   folderContentsQuery,
   folderContentsQueryAs,
   ROOT_DIR_ID,
+  HIDDEN_ROOT_DIR_IDS,
   FileQueryResult
 } from '@/client/queries'
 
@@ -142,7 +143,11 @@ export default function FilesScreen() {
     )
   }
 
-  const data = (query.data as FileQueryResult[] | null | undefined) ?? []
+  const rawData = (query.data as FileQueryResult[] | null | undefined) ?? []
+  // Hide the virtual shared-drives-dir + trash-dir from the listing — they
+  // appear as children of the root in raw io.cozy.files responses but are
+  // surfaced via dedicated screens instead. Same convention as twake-drive web.
+  const data = rawData.filter(item => !HIDDEN_ROOT_DIR_IDS.includes(item._id))
 
   const fabActions = [
     {
