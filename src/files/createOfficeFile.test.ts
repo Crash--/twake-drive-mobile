@@ -1,3 +1,8 @@
+const mockSyncImmediately = jest.fn()
+jest.mock('@/client/createClient', () => ({
+  pouchLink: { syncImmediately: (...args: unknown[]) => mockSyncImmediately(...args) }
+}))
+
 jest.mock('expo-asset', () => ({
   Asset: {
     fromModule: jest.fn().mockReturnValue({
@@ -69,5 +74,31 @@ describe('createOfficeFile', () => {
     const client = { collection: () => ({ createFile }) } as unknown as import('cozy-client').default
 
     await expect(createOfficeFile(client, 'slide', 'X', 'p')).rejects.toThrow(/no id/)
+  })
+})
+
+describe('createOfficeFile — pouch sync', () => {
+  beforeEach(() => {
+    mockSyncImmediately.mockReset()
+  })
+
+  it('schedules an immediate pouch sync after a successful createFile', async () => {
+    const createFile = jest.fn().mockResolvedValue({
+      data: { _id: 'new-id', attributes: { name: 'Notes.docx' } }
+    })
+    const client = {
+      collection: () => ({ createFile })
+    } as unknown as import('cozy-client').default
+    await createOfficeFile(client, 'text', 'Notes', 'parent-id')
+    expect(mockSyncImmediately).toHaveBeenCalledTimes(1)
+  })
+
+  it('does not call syncImmediately when createFile throws', async () => {
+    const createFile = jest.fn().mockRejectedValue(new Error('boom'))
+    const client = {
+      collection: () => ({ createFile })
+    } as unknown as import('cozy-client').default
+    await expect(createOfficeFile(client, 'text', 'Notes', 'parent-id')).rejects.toThrow()
+    expect(mockSyncImmediately).not.toHaveBeenCalled()
   })
 })
