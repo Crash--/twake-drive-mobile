@@ -21,21 +21,23 @@ export const SyncProvider = ({ children }: Props) => {
   // down its in-flight task right after we've gone offline.
   const offlineRef = useRef(false)
 
-  // Lifecycle: start replication when client is available.
-  useEffect(() => {
-    if (!client) return
-    pouchLink.startReplication()
-    return () => {
-      pouchLink.stopReplication()
-    }
-  }, [client])
+  // NOTE: we deliberately do NOT call pouchLink.startReplication() /
+  // stopReplication() ourselves. cozy-pouch-link auto-starts its periodic
+  // loop inside its own `onLogin` hook (invoked by cozy-client after
+  // authentication), so starting it again from here would crash because
+  // `this.pouches` is null until onLogin completes. Likewise stopping it
+  // before onLogin runs throws. iOS suspends the JS runtime when the app
+  // goes to background, so the polling loop pauses implicitly — no need
+  // for an explicit stop.
+  //
+  // We only call `syncImmediately()` to trigger catchups, since it's the
+  // single API in cozy-pouch-link that guards against an uninitialized
+  // PouchManager and silently no-ops in that case.
 
-  // AppState: stop on background, immediate sync on foreground.
+  // AppState: catchup on foreground.
   useEffect(() => {
     const sub = AppState.addEventListener('change', (next: AppStateStatus) => {
-      if (next === 'background') {
-        pouchLink.stopReplication()
-      } else if (next === 'active' && !offlineRef.current) {
+      if (next === 'active' && !offlineRef.current) {
         pouchLink.syncImmediately()
       }
     })
@@ -49,11 +51,9 @@ export const SyncProvider = ({ children }: Props) => {
       if (!online && !offlineRef.current) {
         offlineRef.current = true
         setStatus('offline')
-        pouchLink.stopReplication()
       } else if (online && offlineRef.current) {
         offlineRef.current = false
         setStatus('syncing')
-        pouchLink.startReplication()
         pouchLink.syncImmediately()
       }
     })

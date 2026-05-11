@@ -2,13 +2,9 @@ import React from 'react'
 import { Text, AppState, AppStateStatus } from 'react-native'
 import { act, render } from '@testing-library/react-native'
 
-const mockStart = jest.fn()
-const mockStop = jest.fn()
 const mockSyncNow = jest.fn()
 jest.mock('@/client/createClient', () => ({
   pouchLink: {
-    startReplication: (...args: unknown[]) => mockStart(...args),
-    stopReplication: (...args: unknown[]) => mockStop(...args),
     syncImmediately: (...args: unknown[]) => mockSyncNow(...args)
   }
 }))
@@ -61,8 +57,6 @@ const renderWithProvider = (clientPresent: boolean) => {
 
 describe('SyncProvider', () => {
   beforeEach(() => {
-    mockStart.mockReset()
-    mockStop.mockReset()
     mockSyncNow.mockReset()
     clientOn.mockReset()
     clientOff.mockReset()
@@ -84,45 +78,40 @@ describe('SyncProvider', () => {
     jest.restoreAllMocks()
   })
 
-  it('starts replication when authenticated', () => {
+  it('does not call any lifecycle method on the link at mount (cozy-pouch-link auto-starts via its own onLogin)', () => {
     renderWithProvider(true)
-    expect(mockStart).toHaveBeenCalled()
-  })
-
-  it('does not start when client is null (unauthenticated)', () => {
-    renderWithProvider(false)
-    expect(mockStart).not.toHaveBeenCalled()
-  })
-
-  it('stops replication when going to background', () => {
-    renderWithProvider(true)
-    expect(appStateListener).toBeTruthy()
-    act(() => appStateListener!('background'))
-    expect(mockStop).toHaveBeenCalled()
+    expect(mockSyncNow).not.toHaveBeenCalled()
   })
 
   it('schedules an immediate sync when returning to foreground', () => {
     renderWithProvider(true)
+    expect(appStateListener).toBeTruthy()
     act(() => appStateListener!('background'))
     mockSyncNow.mockClear()
     act(() => appStateListener!('active'))
     expect(mockSyncNow).toHaveBeenCalled()
   })
 
+  it('does not schedule sync on foreground when offline', () => {
+    const { getByTestId } = renderWithProvider(true)
+    act(() => netInfoListener!({ isConnected: false } as never))
+    expect(getByTestId('probe').props.children).toBe('offline')
+    mockSyncNow.mockClear()
+    act(() => appStateListener!('active'))
+    expect(mockSyncNow).not.toHaveBeenCalled()
+  })
+
   it('flips to offline status when NetInfo reports disconnected', () => {
     const { getByTestId } = renderWithProvider(true)
     act(() => netInfoListener!({ isConnected: false } as never))
     expect(getByTestId('probe').props.children).toBe('offline')
-    expect(mockStop).toHaveBeenCalled()
   })
 
-  it('resumes syncing when NetInfo flips back online', () => {
+  it('resumes syncing and runs an immediate catchup when NetInfo flips back online', () => {
     const { getByTestId } = renderWithProvider(true)
     act(() => netInfoListener!({ isConnected: false } as never))
     mockSyncNow.mockClear()
-    mockStart.mockClear()
     act(() => netInfoListener!({ isConnected: true } as never))
-    expect(mockStart).toHaveBeenCalled()
     expect(mockSyncNow).toHaveBeenCalled()
     expect(getByTestId('probe').props.children).toBe('syncing')
   })
