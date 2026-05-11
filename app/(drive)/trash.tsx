@@ -11,7 +11,6 @@ import {
 } from 'react-native-paper'
 import { useQuery } from 'cozy-client'
 import { useClient } from 'cozy-client'
-import { useFocusEffect } from 'expo-router'
 import { useTranslation } from 'react-i18next'
 
 import { AppBar } from '@/ui/AppBar'
@@ -73,21 +72,12 @@ export default function TrashScreen() {
   }
 
   /**
-   * Pull-to-refresh / focus refresh: re-execute the query through the
-   * link chain. CozyPouchLink reads the local SQLite, which is kept
-   * up-to-date by the 30s polling Loop. Right after an emptyTrash
-   * (web), the local SQLite may still hold the trashed docs for up to
-   * 30s; pulling again after that window reflects the empty state.
+   * Pull-to-refresh: re-run the query through the link chain.
+   * useQuery handles the initial fetch on mount on its own.
    */
-  const onRefresh = useCallback(async (): Promise<void> => {
-    await query.fetch()
+  const onRefresh = useCallback((): void => {
+    void query.fetch()
   }, [query])
-
-  useFocusEffect(
-    useCallback(() => {
-      void onRefresh()
-    }, [onRefresh])
-  )
 
   const renderItem = ({ item }: { item: FileQueryResult }) => {
     if (item.type === 'directory') {
