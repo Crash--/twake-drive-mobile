@@ -1,5 +1,4 @@
 import type CozyClient from 'cozy-client'
-import { pouchLink } from '@/client/createClient'
 
 export class RenameConflictError extends Error {
   constructor(name: string) {
@@ -19,9 +18,6 @@ interface FilesCollection {
  * Rename a file or folder. Uses the dedicated cozy-stack endpoint via
  * `FileCollection.updateAttributes` — twake-drive-web does the same.
  *
- * Triggers an immediate pouch sync so the local SQLite mirrors the new
- * name before the next 30s polling tick.
- *
  * Throws RenameConflictError on HTTP 409.
  */
 export const renameEntry = async (
@@ -36,7 +32,6 @@ export const renameEntry = async (
 
   try {
     const result = await collection.updateAttributes(id, { name: trimmed })
-    pouchLink.syncImmediately()
     return result.data
   } catch (e) {
     const err = e as { status?: number; response?: { status?: number } }

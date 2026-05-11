@@ -1,5 +1,4 @@
 import type CozyClient from 'cozy-client'
-import { pouchLink } from '@/client/createClient'
 
 export class FolderConflictError extends Error {
   constructor(name: string) {
@@ -38,7 +37,6 @@ export const createFolder = async (
       dirId,
       type: 'directory'
     })
-    pouchLink.syncImmediately()
     return result.data
   } catch (e) {
     const err = e as { status?: number; response?: { status?: number } }

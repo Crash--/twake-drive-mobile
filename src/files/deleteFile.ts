@@ -1,5 +1,4 @@
 import type CozyClient from 'cozy-client'
-import { pouchLink } from '@/client/createClient'
 
 export interface DeletableEntry {
   _id: string
@@ -28,5 +27,4 @@ export const softDeleteEntry = async (
     _rev: entry._rev,
     _type: entry._type ?? 'io.cozy.files'
   })
-  pouchLink.syncImmediately()
 }
