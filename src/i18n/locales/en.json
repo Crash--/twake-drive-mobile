@@ -37,6 +37,7 @@
       "open": "Open",
       "downloading": "Downloading…",
       "share": "Share",
+      "rename": "Rename",
       "delete": "Delete"
     },
     "delete": {
@@ -82,6 +83,27 @@
       "submit": "Create",
       "errorConflict": "A folder with this name already exists.",
       "errorGeneric": "Failed to create folder."
+    },
+    "rename": {
+      "titleFile": "Rename file",
+      "titleFolder": "Rename folder",
+      "nameLabel": "Name",
+      "submit": "Rename",
+      "errorConflict": "An item with this name already exists.",
+      "errorGeneric": "Failed to rename.",
+      "successFile": "File renamed",
+      "successFolder": "Folder renamed"
+    },
+    "trashActions": {
+      "restore": "Restore",
+      "restoreSuccess": "Restored",
+      "restoreError": "Could not restore",
+      "emptyButton": "Empty trash",
+      "emptyConfirmTitle": "Empty the trash?",
+      "emptyConfirmBody": "All items in the trash will be permanently deleted. This cannot be undone.",
+      "emptyConfirm": "Empty",
+      "emptySuccess": "Trash emptied",
+      "emptyError": "Could not empty the trash"
     },
     "createMenu": {
       "folder": "New folder",
