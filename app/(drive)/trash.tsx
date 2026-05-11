@@ -27,7 +27,6 @@ import { trashQuery, trashQueryAs, FileQueryResult } from '@/client/queries'
 import { restoreEntry, emptyTrash } from '@/files/trashActions'
 import { useSyncStatus } from '@/sync/useSyncStatus'
 import { requireOnline } from '@/sync/requireOnline'
-import { pouchLink } from '@/client/createClient'
 
 export default function TrashScreen() {
   const { t } = useTranslation()
@@ -74,31 +73,15 @@ export default function TrashScreen() {
   }
 
   /**
-   * Pull-to-refresh / focus refresh: run a real Pouch replication and
-   * AWAIT it to completion, then re-read. Bounded by an 8s safety
-   * timeout so the spinner can't hang forever if the underlying
-   * replication promise never resolves.
+   * Pull-to-refresh / focus refresh: re-execute the query through the
+   * link chain. CozyPouchLink reads the local SQLite, which is kept
+   * up-to-date by the 30s polling Loop. Right after an emptyTrash
+   * (web), the local SQLite may still hold the trashed docs for up to
+   * 30s; pulling again after that window reflects the empty state.
    */
   const onRefresh = useCallback(async (): Promise<void> => {
-    if (!client) return
-    const internal = pouchLink as unknown as {
-      pouches?: {
-        replicateOnce?: (opts?: {
-          waitForReplications?: boolean
-        }) => Promise<unknown>
-      }
-    }
-    try {
-      await Promise.race([
-        internal.pouches?.replicateOnce?.({ waitForReplications: false }) ??
-          Promise.resolve(),
-        new Promise<void>(resolve => setTimeout(resolve, 8000))
-      ])
-    } catch (e) {
-      console.error('[TrashScreen] replicateOnce failed', e)
-    }
     await query.fetch()
-  }, [client, query])
+  }, [query])
 
   useFocusEffect(
     useCallback(() => {
