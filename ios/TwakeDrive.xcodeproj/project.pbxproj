@@ -8,28 +8,28 @@
 
 /* Begin PBXBuildFile section */
 		13B07FBF1A68108700A75B9A /* Images.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 13B07FB51A68108700A75B9A /* Images.xcassets */; };
+		2A7F90B4FBE3FD04808B87DC /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 1CBCD6ABF2834EBF23963C26 /* PrivacyInfo.xcprivacy */; };
 		3E461D99554A48A4959DE609 /* SplashScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = AA286B85B6C04FC6940260E9 /* SplashScreen.storyboard */; };
-		625BB0DEC2A9D8455A1839E6 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = CACDAFE4B643D0C37D64B6A9 /* PrivacyInfo.xcprivacy */; };
-		6F4500DB7560D067A60A50DA /* ExpoModulesProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4BCDF0C184AF92D5044C1466 /* ExpoModulesProvider.swift */; };
-		7468B6E0203E65DD9CD0F690 /* libPods-TwakeDrive.a in Frameworks */ = {isa = PBXBuildFile; fileRef = A8EA1C638F653F8BDE2058DD /* libPods-TwakeDrive.a */; };
+		709E49B0B9D174F0F10578B0 /* ExpoModulesProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = CE6394AC0062737DC88CAB25 /* ExpoModulesProvider.swift */; };
 		BB2F792D24A3F905000567C9 /* Expo.plist in Resources */ = {isa = PBXBuildFile; fileRef = BB2F792C24A3F905000567C9 /* Expo.plist */; };
+		D239315EC78F41EE476DF3E2 /* libPods-TwakeDrive.a in Frameworks */ = {isa = PBXBuildFile; fileRef = FECC114309FD433CB51D581B /* libPods-TwakeDrive.a */; };
 		F11748422D0307B40044C1D9 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = F11748412D0307B40044C1D9 /* AppDelegate.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
-		08AF9D65C2162B459D23DECE /* Pods-TwakeDrive.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-TwakeDrive.debug.xcconfig"; path = "Target Support Files/Pods-TwakeDrive/Pods-TwakeDrive.debug.xcconfig"; sourceTree = "<group>"; };
 		13B07F961A680F5B00A75B9A /* TwakeDrive.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = TwakeDrive.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		13B07FB51A68108700A75B9A /* Images.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; name = Images.xcassets; path = TwakeDrive/Images.xcassets; sourceTree = "<group>"; };
 		13B07FB61A68108700A75B9A /* Info.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; name = Info.plist; path = TwakeDrive/Info.plist; sourceTree = "<group>"; };
-		4BCDF0C184AF92D5044C1466 /* ExpoModulesProvider.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = ExpoModulesProvider.swift; path = "Pods/Target Support Files/Pods-TwakeDrive/ExpoModulesProvider.swift"; sourceTree = "<group>"; };
-		A8EA1C638F653F8BDE2058DD /* libPods-TwakeDrive.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = "libPods-TwakeDrive.a"; sourceTree = BUILT_PRODUCTS_DIR; };
+		1CBCD6ABF2834EBF23963C26 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; includeInIndex = 1; name = PrivacyInfo.xcprivacy; path = TwakeDrive/PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
+		21CEE0633495A490998A1B2A /* Pods-TwakeDrive.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-TwakeDrive.release.xcconfig"; path = "Target Support Files/Pods-TwakeDrive/Pods-TwakeDrive.release.xcconfig"; sourceTree = "<group>"; };
+		7BE0007FF2C4921CE9FE4199 /* Pods-TwakeDrive.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-TwakeDrive.debug.xcconfig"; path = "Target Support Files/Pods-TwakeDrive/Pods-TwakeDrive.debug.xcconfig"; sourceTree = "<group>"; };
 		AA286B85B6C04FC6940260E9 /* SplashScreen.storyboard */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = file.storyboard; name = SplashScreen.storyboard; path = TwakeDrive/SplashScreen.storyboard; sourceTree = "<group>"; };
 		BB2F792C24A3F905000567C9 /* Expo.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; path = Expo.plist; sourceTree = "<group>"; };
-		CACDAFE4B643D0C37D64B6A9 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; includeInIndex = 1; name = PrivacyInfo.xcprivacy; path = TwakeDrive/PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
-		D6AF62E2A1BDD343FDC57CDD /* Pods-TwakeDrive.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-TwakeDrive.release.xcconfig"; path = "Target Support Files/Pods-TwakeDrive/Pods-TwakeDrive.release.xcconfig"; sourceTree = "<group>"; };
+		CE6394AC0062737DC88CAB25 /* ExpoModulesProvider.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = ExpoModulesProvider.swift; path = "Pods/Target Support Files/Pods-TwakeDrive/ExpoModulesProvider.swift"; sourceTree = "<group>"; };
 		ED297162215061F000B7C4FE /* JavaScriptCore.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = JavaScriptCore.framework; path = System/Library/Frameworks/JavaScriptCore.framework; sourceTree = SDKROOT; };
 		F11748412D0307B40044C1D9 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = AppDelegate.swift; path = TwakeDrive/AppDelegate.swift; sourceTree = "<group>"; };
 		F11748442D0722820044C1D9 /* TwakeDrive-Bridging-Header.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = "TwakeDrive-Bridging-Header.h"; path = "TwakeDrive/TwakeDrive-Bridging-Header.h"; sourceTree = "<group>"; };
+		FECC114309FD433CB51D581B /* libPods-TwakeDrive.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = "libPods-TwakeDrive.a"; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -37,17 +37,17 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				7468B6E0203E65DD9CD0F690 /* libPods-TwakeDrive.a in Frameworks */,
+				D239315EC78F41EE476DF3E2 /* libPods-TwakeDrive.a in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
-		062B5329E689E60826DAB2C4 /* TwakeDrive */ = {
+		0A6C4A74EA67D71FE3BFA953 /* TwakeDrive */ = {
 			isa = PBXGroup;
 			children = (
-				4BCDF0C184AF92D5044C1466 /* ExpoModulesProvider.swift */,
+				CE6394AC0062737DC88CAB25 /* ExpoModulesProvider.swift */,
 			);
 			name = TwakeDrive;
 			sourceTree = "<group>";
@@ -61,26 +61,28 @@
 				13B07FB51A68108700A75B9A /* Images.xcassets */,
 				13B07FB61A68108700A75B9A /* Info.plist */,
 				AA286B85B6C04FC6940260E9 /* SplashScreen.storyboard */,
-				CACDAFE4B643D0C37D64B6A9 /* PrivacyInfo.xcprivacy */,
+				1CBCD6ABF2834EBF23963C26 /* PrivacyInfo.xcprivacy */,
 			);
 			name = TwakeDrive;
+			sourceTree = "<group>";
+		};
+		25312BDD0DAAEB8A34A05CA8 /* Pods */ = {
+			isa = PBXGroup;
+			children = (
+				7BE0007FF2C4921CE9FE4199 /* Pods-TwakeDrive.debug.xcconfig */,
+				21CEE0633495A490998A1B2A /* Pods-TwakeDrive.release.xcconfig */,
+			);
+			name = Pods;
+			path = Pods;
 			sourceTree = "<group>";
 		};
 		2D16E6871FA4F8E400B85C8A /* Frameworks */ = {
 			isa = PBXGroup;
 			children = (
 				ED297162215061F000B7C4FE /* JavaScriptCore.framework */,
-				A8EA1C638F653F8BDE2058DD /* libPods-TwakeDrive.a */,
+				FECC114309FD433CB51D581B /* libPods-TwakeDrive.a */,
 			);
 			name = Frameworks;
-			sourceTree = "<group>";
-		};
-		74111E9A2F46E4FEF7807C69 /* ExpoModulesProviders */ = {
-			isa = PBXGroup;
-			children = (
-				062B5329E689E60826DAB2C4 /* TwakeDrive */,
-			);
-			name = ExpoModulesProviders;
 			sourceTree = "<group>";
 		};
 		832341AE1AAA6A7D00B99B32 /* Libraries */ = {
@@ -97,8 +99,8 @@
 				832341AE1AAA6A7D00B99B32 /* Libraries */,
 				83CBBA001A601CBA00E9B192 /* Products */,
 				2D16E6871FA4F8E400B85C8A /* Frameworks */,
-				A07658734225DFE7F7DBA794 /* Pods */,
-				74111E9A2F46E4FEF7807C69 /* ExpoModulesProviders */,
+				25312BDD0DAAEB8A34A05CA8 /* Pods */,
+				EE6D32524E629697A1C62E7F /* ExpoModulesProviders */,
 			);
 			indentWidth = 2;
 			sourceTree = "<group>";
@@ -113,16 +115,6 @@
 			name = Products;
 			sourceTree = "<group>";
 		};
-		A07658734225DFE7F7DBA794 /* Pods */ = {
-			isa = PBXGroup;
-			children = (
-				08AF9D65C2162B459D23DECE /* Pods-TwakeDrive.debug.xcconfig */,
-				D6AF62E2A1BDD343FDC57CDD /* Pods-TwakeDrive.release.xcconfig */,
-			);
-			name = Pods;
-			path = Pods;
-			sourceTree = "<group>";
-		};
 		BB2F792B24A3F905000567C9 /* Supporting */ = {
 			isa = PBXGroup;
 			children = (
@@ -130,6 +122,14 @@
 			);
 			name = Supporting;
 			path = TwakeDrive/Supporting;
+			sourceTree = "<group>";
+		};
+		EE6D32524E629697A1C62E7F /* ExpoModulesProviders */ = {
+			isa = PBXGroup;
+			children = (
+				0A6C4A74EA67D71FE3BFA953 /* TwakeDrive */,
+			);
+			name = ExpoModulesProviders;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -140,13 +140,13 @@
 			buildConfigurationList = 13B07F931A680F5B00A75B9A /* Build configuration list for PBXNativeTarget "TwakeDrive" */;
 			buildPhases = (
 				08A4A3CD28434E44B6B9DE2E /* [CP] Check Pods Manifest.lock */,
-				BFA8A616F50C5C7BD8CDBFFF /* [Expo] Configure project */,
+				163FE4071AC8999F057BF284 /* [Expo] Configure project */,
 				13B07F871A680F5B00A75B9A /* Sources */,
 				13B07F8C1A680F5B00A75B9A /* Frameworks */,
 				13B07F8E1A680F5B00A75B9A /* Resources */,
 				00DD1BFF1BD5951E006B06BC /* Bundle React Native code and images */,
 				800E24972A6A228C8D4807E9 /* [CP] Copy Pods Resources */,
-				B92841F4087F8488D738DC2C /* [CP] Embed Pods Frameworks */,
+				ABB11ECBFEA99C97A15D13BD /* [CP] Embed Pods Frameworks */,
 			);
 			buildRules = (
 			);
@@ -196,7 +196,7 @@
 				BB2F792D24A3F905000567C9 /* Expo.plist in Resources */,
 				13B07FBF1A68108700A75B9A /* Images.xcassets in Resources */,
 				3E461D99554A48A4959DE609 /* SplashScreen.storyboard in Resources */,
-				625BB0DEC2A9D8455A1839E6 /* PrivacyInfo.xcprivacy in Resources */,
+				2A7F90B4FBE3FD04808B87DC /* PrivacyInfo.xcprivacy in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -241,6 +241,30 @@
 			shellPath = /bin/sh;
 			shellScript = "diff \"${PODS_PODFILE_DIR_PATH}/Podfile.lock\" \"${PODS_ROOT}/Manifest.lock\" > /dev/null\nif [ $? != 0 ] ; then\n    # print error to STDERR\n    echo \"error: The sandbox is not in sync with the Podfile.lock. Run 'pod install' or update your CocoaPods installation.\" >&2\n    exit 1\nfi\n# This output is used by Xcode 'outputs' to avoid re-running this script phase.\necho \"SUCCESS\" > \"${SCRIPT_OUTPUT_FILE_0}\"\n";
 			showEnvVarsInLog = 0;
+		};
+		163FE4071AC8999F057BF284 /* [Expo] Configure project */ = {
+			isa = PBXShellScriptBuildPhase;
+			alwaysOutOfDate = 1;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+				"$(SRCROOT)/.xcode.env",
+				"$(SRCROOT)/.xcode.env.local",
+				"$(SRCROOT)/TwakeDrive/TwakeDrive.entitlements",
+				"$(SRCROOT)/Pods/Target Support Files/Pods-TwakeDrive/expo-configure-project.sh",
+			);
+			name = "[Expo] Configure project";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+				"$(SRCROOT)/Pods/Target Support Files/Pods-TwakeDrive/ExpoModulesProvider.swift",
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "# This script configures Expo modules and generates the modules provider file.\nbash -l -c \"./Pods/Target\\ Support\\ Files/Pods-TwakeDrive/expo-configure-project.sh\"\n";
 		};
 		800E24972A6A228C8D4807E9 /* [CP] Copy Pods Resources */ = {
 			isa = PBXShellScriptBuildPhase;
@@ -316,7 +340,7 @@
 			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-TwakeDrive/Pods-TwakeDrive-resources.sh\"\n";
 			showEnvVarsInLog = 0;
 		};
-		B92841F4087F8488D738DC2C /* [CP] Embed Pods Frameworks */ = {
+		ABB11ECBFEA99C97A15D13BD /* [CP] Embed Pods Frameworks */ = {
 			isa = PBXShellScriptBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -340,30 +364,6 @@
 			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-TwakeDrive/Pods-TwakeDrive-frameworks.sh\"\n";
 			showEnvVarsInLog = 0;
 		};
-		BFA8A616F50C5C7BD8CDBFFF /* [Expo] Configure project */ = {
-			isa = PBXShellScriptBuildPhase;
-			alwaysOutOfDate = 1;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			inputFileListPaths = (
-			);
-			inputPaths = (
-				"$(SRCROOT)/.xcode.env",
-				"$(SRCROOT)/.xcode.env.local",
-				"$(SRCROOT)/TwakeDrive/TwakeDrive.entitlements",
-				"$(SRCROOT)/Pods/Target Support Files/Pods-TwakeDrive/expo-configure-project.sh",
-			);
-			name = "[Expo] Configure project";
-			outputFileListPaths = (
-			);
-			outputPaths = (
-				"$(SRCROOT)/Pods/Target Support Files/Pods-TwakeDrive/ExpoModulesProvider.swift",
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-			shellPath = /bin/sh;
-			shellScript = "# This script configures Expo modules and generates the modules provider file.\nbash -l -c \"./Pods/Target\\ Support\\ Files/Pods-TwakeDrive/expo-configure-project.sh\"\n";
-		};
 /* End PBXShellScriptBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
@@ -372,7 +372,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				F11748422D0307B40044C1D9 /* AppDelegate.swift in Sources */,
-				6F4500DB7560D067A60A50DA /* ExpoModulesProvider.swift in Sources */,
+				709E49B0B9D174F0F10578B0 /* ExpoModulesProvider.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -381,7 +381,7 @@
 /* Begin XCBuildConfiguration section */
 		13B07F941A680F5B00A75B9A /* Debug */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = 08AF9D65C2162B459D23DECE /* Pods-TwakeDrive.debug.xcconfig */;
+			baseConfigurationReference = 7BE0007FF2C4921CE9FE4199 /* Pods-TwakeDrive.debug.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CLANG_ENABLE_MODULES = YES;
@@ -393,7 +393,7 @@
 					"FB_SONARKIT_ENABLED=1",
 				);
 				INFOPLIST_FILE = TwakeDrive/Info.plist;
-				IPHONEOS_DEPLOYMENT_TARGET = 15.1;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -417,14 +417,14 @@
 		};
 		13B07F951A680F5B00A75B9A /* Release */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = D6AF62E2A1BDD343FDC57CDD /* Pods-TwakeDrive.release.xcconfig */;
+			baseConfigurationReference = 21CEE0633495A490998A1B2A /* Pods-TwakeDrive.release.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CLANG_ENABLE_MODULES = YES;
 				CODE_SIGN_ENTITLEMENTS = TwakeDrive/TwakeDrive.entitlements;
 				CURRENT_PROJECT_VERSION = 1;
 				INFOPLIST_FILE = TwakeDrive/Info.plist;
-				IPHONEOS_DEPLOYMENT_TARGET = 15.1;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
