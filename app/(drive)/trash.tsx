@@ -24,6 +24,8 @@ import { useAuth } from '@/auth/useAuth'
 import { getErrorMessageKey } from '@/utils/errorMessages'
 import { trashQuery, trashQueryAs, FileQueryResult } from '@/client/queries'
 import { restoreEntry, emptyTrash } from '@/files/trashActions'
+import { useIsOnline } from '@/network/useIsOnline'
+import { requireOnline } from '@/network/requireOnline'
 
 export default function TrashScreen() {
   const { t } = useTranslation()
@@ -35,10 +37,12 @@ export default function TrashScreen() {
   const [snackbar, setSnackbar] = useState<string | null>(null)
   const [emptyDialogVisible, setEmptyDialogVisible] = useState(false)
   const [emptying, setEmptying] = useState(false)
+  const isOnline = useIsOnline()
 
   const data = (query.data as FileQueryResult[] | null | undefined) ?? []
 
   const handleRestore = async (item: FileQueryResult): Promise<void> => {
+    if (!requireOnline(isOnline, setSnackbar, t)) return
     if (!client) return
     try {
       await restoreEntry(client, item._id)
@@ -51,6 +55,7 @@ export default function TrashScreen() {
   }
 
   const handleEmpty = async (): Promise<void> => {
+    if (!requireOnline(isOnline, setSnackbar, t)) return
     if (!client) return
     setEmptying(true)
     try {
