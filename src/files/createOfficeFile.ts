@@ -1,7 +1,6 @@
 import { File } from 'expo-file-system'
 import { Asset } from 'expo-asset'
 import type CozyClient from 'cozy-client'
-import { pouchLink } from '@/client/createClient'
 
 export type OfficeFileClass = 'text' | 'sheet' | 'slide'
 
@@ -74,7 +73,6 @@ export const createOfficeFile = async (
     dirId,
     contentType: tpl.mime
   })
-  pouchLink.syncImmediately()
   const data = result.data
   const id = data._id ?? data.id
   if (!id) throw new Error('Upload returned no id')

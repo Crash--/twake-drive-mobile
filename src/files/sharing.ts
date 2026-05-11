@@ -1,5 +1,4 @@
 import type CozyClient from 'cozy-client'
-import { pouchLink } from '@/client/createClient'
 
 // Doctype constants used throughout this module.
 const FILES_DOCTYPE = 'io.cozy.files'
@@ -229,7 +228,6 @@ export const createPublicLink = async (
     tiny: true,
     verbs
   })
-  pouchLink.syncImmediately()
   return result.data
 }
 
@@ -263,7 +261,6 @@ export const revokePublicLink = async (
 ): Promise<void> => {
   const document = { _id: file._id, _type: FILES_DOCTYPE, type: file.type }
   await getPermissions(client).revokeSharingLink(document)
-  pouchLink.syncImmediately()
 }
 
 /**
@@ -314,7 +311,6 @@ export const addRecipient = async (
     readOnlyRecipients: readOnly ? [recipient] : []
   }
   await getSharings(client).addRecipients(args)
-  pouchLink.syncImmediately()
 }
 
 /**
@@ -330,7 +326,6 @@ export const revokeRecipientAtIndex = async (
   index: number
 ): Promise<void> => {
   await getSharings(client).revokeRecipient({ _id: sharing._id }, index)
-  pouchLink.syncImmediately()
 }
 
 /**
@@ -372,6 +367,5 @@ export const createSharingForFile = async (
     readOnlyRecipients: readOnly ? [recipient] : []
   }
   const resp = await getSharings(client).create(args)
-  pouchLink.syncImmediately()
   return resp.data
 }

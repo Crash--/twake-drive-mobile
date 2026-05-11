@@ -2,16 +2,6 @@ import React from 'react'
 import { Text, Pressable } from 'react-native'
 import { render, screen, waitFor, act, fireEvent } from '@testing-library/react-native'
 
-jest.mock('cozy-pouch-link', () => ({
-  __esModule: true,
-  default: jest.fn(),
-  SQLiteQuery: class {}
-}))
-
-jest.mock('@/client/pouchPlatform', () => ({
-  pouchPlatform: {}
-}))
-
 jest.mock('cozy-client', () => ({
   __esModule: true,
   default: jest.fn().mockImplementation(() => ({

@@ -1,5 +1,4 @@
 import type CozyClient from 'cozy-client'
-import { pouchLink } from '@/client/createClient'
 
 export interface CreatedNote {
   _id: string
@@ -27,7 +26,6 @@ export const createCozyNote = async (
 ): Promise<CreatedNote> => {
   const collection = client.collection('io.cozy.notes') as unknown as NotesCollection
   const result = await collection.create({ dir_id: dirId })
-  pouchLink.syncImmediately()
   const data = result.data
   const id = data._id ?? data.id
   if (!id) throw new Error('Note creation returned no id')
