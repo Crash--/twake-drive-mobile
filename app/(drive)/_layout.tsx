@@ -5,12 +5,14 @@ import Icon from 'react-native-vector-icons/MaterialCommunityIcons'
 import { useTranslation } from 'react-i18next'
 
 import { SharingProvider } from '@/sharing/SharingProvider'
+import { OfflineBanner } from '@/ui/OfflineBanner'
 
 export default function DriveLayout() {
   const theme = useTheme()
   const { t } = useTranslation()
   return (
     <SharingProvider>
+      <OfflineBanner />
       <Tabs
         screenOptions={{
           headerShown: false,
