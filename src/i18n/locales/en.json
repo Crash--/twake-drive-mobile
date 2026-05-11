@@ -133,7 +133,8 @@
       "title": "Document"
     },
     "offline": {
-      "requiresOnline": "Available when you're back online"
+      "requiresOnline": "Available when you're back online",
+      "banner": "Offline — showing cached data"
     }
   },
   "errors": {
