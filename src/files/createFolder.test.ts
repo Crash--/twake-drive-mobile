@@ -1,5 +1,10 @@
 import { createFolder, FolderConflictError } from './createFolder'
 
+const mockSyncImmediately = jest.fn()
+jest.mock('@/client/createClient', () => ({
+  pouchLink: { syncImmediately: (...args: unknown[]) => mockSyncImmediately(...args) }
+}))
+
 const makeClient = (createImpl: (...args: unknown[]) => unknown) =>
   ({
     collection: () => ({ create: createImpl })
@@ -53,5 +58,26 @@ describe('createFolder', () => {
     const err = new Error('boom')
     const create = jest.fn().mockRejectedValue(err)
     await expect(createFolder(makeClient(create), 'Foo', 'parent-id')).rejects.toBe(err)
+  })
+})
+
+describe('createFolder — pouch sync', () => {
+  beforeEach(() => {
+    mockSyncImmediately.mockReset()
+  })
+
+  it('schedules an immediate pouch sync after a successful create', async () => {
+    const create = jest
+      .fn()
+      .mockResolvedValue({ data: { _id: 'new', name: 'Foo', type: 'directory' } })
+    await createFolder(makeClient(create), 'Foo', 'parent-id')
+    expect(mockSyncImmediately).toHaveBeenCalledTimes(1)
+  })
+
+  it('does not call syncImmediately when create throws', async () => {
+    const err = new Error('boom')
+    const create = jest.fn().mockRejectedValue(err)
+    await expect(createFolder(makeClient(create), 'Foo', 'parent-id')).rejects.toThrow()
+    expect(mockSyncImmediately).not.toHaveBeenCalled()
   })
 })
