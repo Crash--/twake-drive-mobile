@@ -16,6 +16,7 @@ import { ShareSheet, ShareSheetHandle } from '@/ui/ShareSheet'
 import { CreateFolderDialog } from '@/ui/CreateFolderDialog'
 import { CreateOfficeFileDialog } from '@/ui/CreateOfficeFileDialog'
 import { ConfirmDeleteDialog } from '@/ui/ConfirmDeleteDialog'
+import { RenameDialog } from '@/ui/RenameDialog'
 import { useMultiSelect } from '@/ui/useMultiSelect'
 import { useAuth } from '@/auth/useAuth'
 import { getErrorMessageKey } from '@/utils/errorMessages'
@@ -23,6 +24,7 @@ import { createFolder } from '@/files/createFolder'
 import { createCozyNote } from '@/files/createCozyNote'
 import { createOfficeFile, OfficeFileClass } from '@/files/createOfficeFile'
 import { softDeleteEntry } from '@/files/deleteFile'
+import { renameEntry } from '@/files/renameEntry'
 import { useFlag } from '@/client/useFlag'
 import { useSyncStatus } from '@/sync/useSyncStatus'
 import { requireOnline } from '@/sync/requireOnline'
@@ -59,6 +61,7 @@ export default function FilesScreen() {
   const [creatingClass, setCreatingClass] = useState<OfficeFileClass | null>(null)
   const [fabOpen, setFabOpen] = useState(false)
   const [pendingDelete, setPendingDelete] = useState<FileQueryResult | null>(null)
+  const [pendingRename, setPendingRename] = useState<FileQueryResult | null>(null)
   const [bulkConfirmVisible, setBulkConfirmVisible] = useState(false)
   const [deleting, setDeleting] = useState(false)
   const [snackbar, setSnackbar] = useState<string | null>(null)
@@ -133,6 +136,25 @@ export default function FilesScreen() {
 
   const requestDelete = (entry: FileQueryResult): void => {
     setPendingDelete(entry)
+  }
+
+  const requestRename = (entry: FileQueryResult): void => {
+    setPendingRename(entry)
+  }
+
+  const submitRename = async (newName: string): Promise<void> => {
+    if (!requireOnline(syncStatus, m => setSnackbar(m), t)) return
+    if (!client || !pendingRename) return
+    await renameEntry(client, pendingRename._id, newName)
+    setSnackbar(
+      t(
+        pendingRename.type === 'directory'
+          ? 'drive.rename.successFolder'
+          : 'drive.rename.successFile'
+      )
+    )
+    setPendingRename(null)
+    await Promise.all([foldersQuery.fetch(), filesQuery.fetch()])
   }
 
   const confirmDelete = async (): Promise<void> => {
@@ -212,6 +234,7 @@ export default function FilesScreen() {
                     type: 'directory'
                   })
           }
+          onRename={selection.isSelecting ? undefined : () => requestRename(item)}
           onDelete={selection.isSelecting ? undefined : () => requestDelete(item)}
         />
       )
@@ -242,6 +265,7 @@ export default function FilesScreen() {
                   type: 'file'
                 })
         }
+        onRename={selection.isSelecting ? undefined : () => requestRename(item)}
         onDelete={selection.isSelecting ? undefined : () => requestDelete(item)}
       />
     )
@@ -348,6 +372,10 @@ export default function FilesScreen() {
       <FileMetadataSheet
         ref={sheetRef}
         onShareRequested={file => shareRef.current?.present(file)}
+        onRenameRequested={file => {
+          const full = data.find(d => d._id === file._id)
+          if (full) requestRename(full)
+        }}
         onDeleteRequested={file => {
           const full = data.find(d => d._id === file._id)
           if (full) requestDelete(full)
@@ -378,6 +406,13 @@ export default function FilesScreen() {
         loading={deleting}
         onConfirm={() => void confirmDelete()}
         onDismiss={() => (deleting ? undefined : setPendingDelete(null))}
+      />
+      <RenameDialog
+        visible={!!pendingRename}
+        initialName={pendingRename?.name ?? ''}
+        type={pendingRename?.type}
+        onDismiss={() => setPendingRename(null)}
+        onSubmit={submitRename}
       />
       <ConfirmDeleteDialog
         visible={bulkConfirmVisible}

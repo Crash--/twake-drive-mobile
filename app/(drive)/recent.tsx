@@ -13,10 +13,12 @@ import { FileRow } from '@/ui/FileRow'
 import { FileMetadataSheet, FileMetadataSheetHandle } from '@/ui/FileMetadataSheet'
 import { ShareSheet, ShareSheetHandle } from '@/ui/ShareSheet'
 import { ConfirmDeleteDialog } from '@/ui/ConfirmDeleteDialog'
+import { RenameDialog } from '@/ui/RenameDialog'
 import { useAuth } from '@/auth/useAuth'
 import { getErrorMessageKey } from '@/utils/errorMessages'
 import { recentQuery, recentQueryAs, FileQueryResult } from '@/client/queries'
 import { softDeleteEntry } from '@/files/deleteFile'
+import { renameEntry } from '@/files/renameEntry'
 import { useSyncStatus } from '@/sync/useSyncStatus'
 import { requireOnline } from '@/sync/requireOnline'
 
@@ -29,6 +31,7 @@ export default function RecentScreen() {
   const shareRef = useRef<ShareSheetHandle>(null)
   const query = useQuery(recentQuery(), { as: recentQueryAs })
   const [pendingDelete, setPendingDelete] = useState<FileQueryResult | null>(null)
+  const [pendingRename, setPendingRename] = useState<FileQueryResult | null>(null)
   const [deleting, setDeleting] = useState(false)
   const [snackbar, setSnackbar] = useState<string | null>(null)
   const { status: syncStatus } = useSyncStatus()
@@ -55,6 +58,15 @@ export default function RecentScreen() {
     }
   }
 
+  const submitRename = async (newName: string): Promise<void> => {
+    if (!requireOnline(syncStatus, m => setSnackbar(m), t)) return
+    if (!client || !pendingRename) return
+    await renameEntry(client, pendingRename._id, newName)
+    setSnackbar(t('drive.rename.successFile'))
+    setPendingRename(null)
+    await query.fetch()
+  }
+
   const renderItem = ({ item }: { item: FileQueryResult }) => (
     <FileRow
       file={{ ...item, size: item.size ?? null }}
@@ -64,6 +76,7 @@ export default function RecentScreen() {
       onShare={file =>
         shareRef.current?.present({ _id: file._id, name: file.name, type: 'file' })
       }
+      onRename={() => setPendingRename(item)}
       onDelete={() => setPendingDelete(item)}
     />
   )
@@ -98,6 +111,10 @@ export default function RecentScreen() {
       <FileMetadataSheet
         ref={sheetRef}
         onShareRequested={file => shareRef.current?.present(file)}
+        onRenameRequested={file => {
+          const full = data.find(d => d._id === file._id)
+          if (full) setPendingRename(full)
+        }}
         onDeleteRequested={file => {
           const full = data.find(d => d._id === file._id)
           if (full) setPendingDelete(full)
@@ -110,6 +127,13 @@ export default function RecentScreen() {
         loading={deleting}
         onConfirm={() => void confirmDelete()}
         onDismiss={() => (deleting ? undefined : setPendingDelete(null))}
+      />
+      <RenameDialog
+        visible={!!pendingRename}
+        initialName={pendingRename?.name ?? ''}
+        type={pendingRename?.type}
+        onDismiss={() => setPendingRename(null)}
+        onSubmit={submitRename}
       />
       <Snackbar visible={!!snackbar} onDismiss={() => setSnackbar(null)} duration={3000}>
         {snackbar ?? ''}

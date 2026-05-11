@@ -36,11 +36,12 @@ export interface FileMetadataSheetHandle {
 
 interface FileMetadataSheetProps {
   onShareRequested?: (file: FileMetadata) => void
+  onRenameRequested?: (file: FileMetadata) => void
   onDeleteRequested?: (file: FileMetadata) => void
 }
 
 export const FileMetadataSheet = forwardRef<FileMetadataSheetHandle, FileMetadataSheetProps>(
-  ({ onShareRequested, onDeleteRequested }, ref) => {
+  ({ onShareRequested, onRenameRequested, onDeleteRequested }, ref) => {
   const theme = useTheme()
   const { t } = useTranslation()
   const client = useClient()
@@ -119,6 +120,12 @@ export const FileMetadataSheet = forwardRef<FileMetadataSheetHandle, FileMetadat
     onShareRequested(file)
   }
 
+  const onRename = (): void => {
+    if (!file || !onRenameRequested) return
+    bottomSheetRef.current?.close()
+    onRenameRequested(file)
+  }
+
   const onDelete = (): void => {
     if (!file || !onDeleteRequested) return
     bottomSheetRef.current?.close()
@@ -175,6 +182,11 @@ export const FileMetadataSheet = forwardRef<FileMetadataSheetHandle, FileMetadat
               {onShareRequested ? (
                 <Button mode="outlined" onPress={onShare} icon="share-variant">
                   {t('drive.fileMeta.share')}
+                </Button>
+              ) : null}
+              {onRenameRequested ? (
+                <Button mode="outlined" onPress={onRename} icon="pencil-outline">
+                  {t('drive.fileMeta.rename')}
                 </Button>
               ) : null}
               {onDeleteRequested ? (

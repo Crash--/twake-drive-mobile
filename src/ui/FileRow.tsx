@@ -26,11 +26,13 @@ interface Props {
   onLongPress?: (file: FileItem) => void
   /** Render the row in the "selected" state (tinted background). */
   selected?: boolean
-  /** When `onShare` or `onDelete` is provided, a 3-dot menu is rendered on
-   *  the right with the corresponding action(s). Without any, the row stays
-   *  unadorned (the metadata sheet still surfaces these actions). The menu
-   *  is hidden while `selected` to keep the row in pure selection mode. */
+  /** When any of `onShare` / `onRename` / `onDelete` is provided, a 3-dot
+   *  menu is rendered on the right with the corresponding action(s).
+   *  Without any, the row stays unadorned (the metadata sheet still
+   *  surfaces these actions). The menu is hidden while `selected` to keep
+   *  the row in pure selection mode. */
   onShare?: (file: FileItem) => void
+  onRename?: (file: FileItem) => void
   onDelete?: (file: FileItem) => void
 }
 
@@ -40,6 +42,7 @@ export const FileRow = ({
   onLongPress,
   selected,
   onShare,
+  onRename,
   onDelete
 }: Props) => {
   const { t } = useTranslation()
@@ -51,7 +54,7 @@ export const FileRow = ({
     : ''
   const description = date ? `${size} · ${date}` : size
   const sharingStatus = useFileSharingStatus(file._id)
-  const hasMenu = (!!onShare || !!onDelete) && !selected
+  const hasMenu = (!!onShare || !!onRename || !!onDelete) && !selected
 
   return (
     <List.Item
@@ -96,6 +99,16 @@ export const FileRow = ({
                 onPress={() => {
                   setMenuVisible(false)
                   onShare(file)
+                }}
+              />
+            ) : null}
+            {onRename ? (
+              <Menu.Item
+                leadingIcon="pencil-outline"
+                title={t('drive.fileMeta.rename')}
+                onPress={() => {
+                  setMenuVisible(false)
+                  onRename(file)
                 }}
               />
             ) : null}

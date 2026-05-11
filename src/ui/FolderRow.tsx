@@ -19,12 +19,13 @@ interface Props {
   /** Render the row in the "selected" state (tinted background). */
   selected?: boolean
   /**
-   * When `onShare` or `onDelete` is provided, a 3-dot menu is rendered with
-   * the corresponding action(s). Without any, the chevron-right is shown.
-   * The menu is hidden while `selected` to keep the row in pure selection
-   * mode.
+   * When any of `onShare` / `onRename` / `onDelete` is provided, a 3-dot
+   * menu is rendered with the corresponding action(s). Without any, the
+   * chevron-right is shown. The menu is hidden while `selected` to keep
+   * the row in pure selection mode.
    */
   onShare?: (folder: FolderItem) => void
+  onRename?: (folder: FolderItem) => void
   onDelete?: (folder: FolderItem) => void
 }
 
@@ -34,13 +35,14 @@ export const FolderRow = ({
   onLongPress,
   selected,
   onShare,
+  onRename,
   onDelete
 }: Props) => {
   const { t } = useTranslation()
   const theme = useTheme()
   const [menuVisible, setMenuVisible] = useState(false)
   const sharingStatus = useFileSharingStatus(folder._id)
-  const hasMenu = (!!onShare || !!onDelete) && !selected
+  const hasMenu = (!!onShare || !!onRename || !!onDelete) && !selected
 
   return (
     <List.Item
@@ -84,6 +86,16 @@ export const FolderRow = ({
                 onPress={() => {
                   setMenuVisible(false)
                   onShare(folder)
+                }}
+              />
+            ) : null}
+            {onRename ? (
+              <Menu.Item
+                leadingIcon="pencil-outline"
+                title={t('drive.fileMeta.rename')}
+                onPress={() => {
+                  setMenuVisible(false)
+                  onRename(folder)
                 }}
               />
             ) : null}
