@@ -26,6 +26,7 @@ interface Props {
    */
   onShare?: (folder: FolderItem) => void
   onRename?: (folder: FolderItem) => void
+  onRestore?: (folder: FolderItem) => void
   onDelete?: (folder: FolderItem) => void
 }
 
@@ -36,13 +37,14 @@ export const FolderRow = ({
   selected,
   onShare,
   onRename,
+  onRestore,
   onDelete
 }: Props) => {
   const { t } = useTranslation()
   const theme = useTheme()
   const [menuVisible, setMenuVisible] = useState(false)
   const sharingStatus = useFileSharingStatus(folder._id)
-  const hasMenu = (!!onShare || !!onRename || !!onDelete) && !selected
+  const hasMenu = (!!onShare || !!onRename || !!onRestore || !!onDelete) && !selected
 
   return (
     <List.Item
@@ -96,6 +98,16 @@ export const FolderRow = ({
                 onPress={() => {
                   setMenuVisible(false)
                   onRename(folder)
+                }}
+              />
+            ) : null}
+            {onRestore ? (
+              <Menu.Item
+                leadingIcon="restore"
+                title={t('drive.trashActions.restore')}
+                onPress={() => {
+                  setMenuVisible(false)
+                  onRestore(folder)
                 }}
               />
             ) : null}

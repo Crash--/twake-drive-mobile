@@ -33,6 +33,7 @@ interface Props {
    *  the row in pure selection mode. */
   onShare?: (file: FileItem) => void
   onRename?: (file: FileItem) => void
+  onRestore?: (file: FileItem) => void
   onDelete?: (file: FileItem) => void
 }
 
@@ -43,6 +44,7 @@ export const FileRow = ({
   selected,
   onShare,
   onRename,
+  onRestore,
   onDelete
 }: Props) => {
   const { t } = useTranslation()
@@ -54,7 +56,7 @@ export const FileRow = ({
     : ''
   const description = date ? `${size} · ${date}` : size
   const sharingStatus = useFileSharingStatus(file._id)
-  const hasMenu = (!!onShare || !!onRename || !!onDelete) && !selected
+  const hasMenu = (!!onShare || !!onRename || !!onRestore || !!onDelete) && !selected
 
   return (
     <List.Item
@@ -109,6 +111,16 @@ export const FileRow = ({
                 onPress={() => {
                   setMenuVisible(false)
                   onRename(file)
+                }}
+              />
+            ) : null}
+            {onRestore ? (
+              <Menu.Item
+                leadingIcon="restore"
+                title={t('drive.trashActions.restore')}
+                onPress={() => {
+                  setMenuVisible(false)
+                  onRestore(file)
                 }}
               />
             ) : null}

@@ -94,6 +94,17 @@
       "successFile": "File renamed",
       "successFolder": "Folder renamed"
     },
+    "trashActions": {
+      "restore": "Restore",
+      "restoreSuccess": "Restored",
+      "restoreError": "Could not restore",
+      "emptyButton": "Empty trash",
+      "emptyConfirmTitle": "Empty the trash?",
+      "emptyConfirmBody": "All items in the trash will be permanently deleted. This cannot be undone.",
+      "emptyConfirm": "Empty",
+      "emptySuccess": "Trash emptied",
+      "emptyError": "Could not empty the trash"
+    },
     "createMenu": {
       "folder": "New folder",
       "note": "New note",

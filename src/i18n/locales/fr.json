@@ -87,6 +87,17 @@
       "successFile": "Fichier renommé",
       "successFolder": "Dossier renommé"
     },
+    "trashActions": {
+      "restore": "Restaurer",
+      "restoreSuccess": "Restauré",
+      "restoreError": "Impossible de restaurer",
+      "emptyButton": "Vider la corbeille",
+      "emptyConfirmTitle": "Vider la corbeille ?",
+      "emptyConfirmBody": "Tous les éléments de la corbeille seront supprimés définitivement. Cette action est irréversible.",
+      "emptyConfirm": "Vider",
+      "emptySuccess": "Corbeille vidée",
+      "emptyError": "Impossible de vider la corbeille"
+    },
     "createFolder": {
       "title": "Nouveau dossier",
       "nameLabel": "Nom",
