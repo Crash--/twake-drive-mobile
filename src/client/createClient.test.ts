@@ -17,6 +17,9 @@ jest.mock('cozy-client', () => ({
   default: jest.fn(function (this: any, opts: unknown) {
     this.options = opts
     this.registerPlugin = jest.fn().mockResolvedValue(undefined)
+  }),
+  StackLink: jest.fn(function (this: any) {
+    this.kind = 'StackLink-stub'
   })
 }))
 
@@ -53,12 +56,15 @@ describe('createClient', () => {
     expect(pouchLink).toBeDefined()
   })
 
-  it('passes the pouch link as the first link in the chain', () => {
+  it('passes [pouchLink, StackLink] as the chain (pouch first, stack fallback)', () => {
     createClient(session)
     const opts = mockCozyClient.mock.calls[0][0] as Record<string, unknown>
     expect(Array.isArray(opts.links)).toBe(true)
-    expect((opts.links as unknown[]).length).toBe(1)
+    expect((opts.links as unknown[]).length).toBe(2)
     expect((opts.links as unknown[])[0]).toBe(pouchLink)
+    // The second link is the StackLink instance — cozy-client v60 does NOT
+    // auto-append it when `links` is provided, so we add it explicitly.
+    expect((opts.links as unknown[])[1]).toMatchObject({ kind: 'StackLink-stub' })
     expect(opts.uri).toBe('https://alice.example.com')
   })
 })

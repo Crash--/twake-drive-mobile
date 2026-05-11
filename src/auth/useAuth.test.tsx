@@ -36,7 +36,8 @@ jest.mock('cozy-client', () => ({
     }),
     registerPlugin: jest.fn(),
     logout: jest.fn()
-  }))
+  })),
+  StackLink: jest.fn()
 }))
 
 jest.mock('cozy-flags', () => ({

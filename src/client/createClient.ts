@@ -1,4 +1,4 @@
-import CozyClient from 'cozy-client'
+import CozyClient, { StackLink } from 'cozy-client'
 import flag from 'cozy-flags'
 import CozyPouchLink from 'cozy-pouch-link'
 
@@ -48,7 +48,11 @@ export const createClient = (session: Session): CozyClient => {
       slug: 'twake-drive-mobile',
       version: '0.1.0'
     },
-    links: [pouchLink]
+    // CozyPouchLink first → serves replicated doctype reads from SQLite
+    // and forwards everything else (mutations + non-replicated doctypes)
+    // to StackLink. cozy-client v60 does NOT auto-append a StackLink when
+    // `links` is provided, so we add it explicitly.
+    links: [pouchLink, new StackLink()]
   })
   void client.registerPlugin(flag.plugin, null)
   return client
