@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react'
+import React, { useCallback, useRef, useState } from 'react'
 import { FlatList, RefreshControl, StyleSheet, View } from 'react-native'
 import {
   Button,
@@ -11,6 +11,7 @@ import {
 } from 'react-native-paper'
 import { useQuery } from 'cozy-client'
 import { useClient } from 'cozy-client'
+import { useFocusEffect } from 'expo-router'
 import { useTranslation } from 'react-i18next'
 
 import { AppBar } from '@/ui/AppBar'
@@ -79,8 +80,13 @@ export default function TrashScreen() {
    * To actually reflect the server (after emptyTrash, after another
    * client deleted things, etc.), we have to trigger a real
    * replication and *wait* for it to land before re-reading.
+   *
+   * Also called on screen focus (useFocusEffect below) so that newly-
+   * trashed docs from My Files / Recent show up the first time the
+   * user opens this tab — without it, cozy-client's in-memory query
+   * cache stays stale until a manual pull or app reload.
    */
-  const onRefresh = async (): Promise<void> => {
+  const onRefresh = useCallback(async (): Promise<void> => {
     if (!client) return
     await new Promise<void>(resolve => {
       let resolved = false
@@ -97,7 +103,13 @@ export default function TrashScreen() {
       setTimeout(done, 10000)
     })
     await query.fetch()
-  }
+  }, [client, query])
+
+  useFocusEffect(
+    useCallback(() => {
+      void onRefresh()
+    }, [onRefresh])
+  )
 
   const renderItem = ({ item }: { item: FileQueryResult }) => {
     if (item.type === 'directory') {
@@ -132,15 +144,19 @@ export default function TrashScreen() {
       ) : query.fetchStatus === 'failed' ? (
         <ErrorState
           message={t(getErrorMessageKey(query.lastError))}
-          onRetry={() => query.fetch()}
+          onRetry={onRefresh}
         />
-      ) : data.length === 0 ? (
-        <EmptyState message={t('drive.emptyTrash')} />
       ) : (
+        // Always render the FlatList (even when empty, via
+        // ListEmptyComponent) so the RefreshControl stays reachable —
+        // otherwise the user can't pull-to-refresh to ask Pouch to
+        // sync a freshly-trashed doc that hasn't replicated yet.
         <FlatList
           data={data}
           keyExtractor={item => item._id}
           renderItem={renderItem}
+          ListEmptyComponent={<EmptyState message={t('drive.emptyTrash')} />}
+          contentContainerStyle={data.length === 0 ? styles.emptyContent : undefined}
           refreshControl={
             <RefreshControl
               refreshing={query.fetchStatus === 'loading'}
@@ -192,5 +208,6 @@ export default function TrashScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  fab: { position: 'absolute', right: 16, bottom: 16 }
+  fab: { position: 'absolute', right: 16, bottom: 16 },
+  emptyContent: { flexGrow: 1, justifyContent: 'center' }
 })
