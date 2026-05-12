@@ -35,7 +35,15 @@ const makeClient = (token: string | null = 'tok-1', uri = 'https://alice.example
   }) as unknown as import('cozy-client').default
 
 describe('openFileNatively', () => {
-  beforeEach(() => jest.clearAllMocks())
+  beforeEach(() => {
+    jest.clearAllMocks()
+    // clearAllMocks doesn't drain mockResolvedValueOnce queues; reset the
+    // ones each test schedules so cross-test leakage doesn't happen.
+    ;(FileSystem.getInfoAsync as jest.Mock).mockReset()
+    ;(FileSystem.getInfoAsync as jest.Mock).mockResolvedValue({ exists: false })
+    ;(FileSystem.copyAsync as jest.Mock).mockReset()
+    ;(FileSystem.copyAsync as jest.Mock).mockResolvedValue(undefined)
+  })
 
   it('downloads to cache and opens via FileViewer', async () => {
     ;(FileSystem.downloadAsync as jest.Mock).mockResolvedValueOnce({
