@@ -426,9 +426,21 @@ If folder has > 1000 files → confirmation dialog with count + estimated size (
 
 ## 8. Test strategy
 
-The repo has no Jest infrastructure today. Decision: **don't introduce Jest in this PR** (out of scope). Manual test only.
+The repo uses Jest (`jest@29` + `jest-expo`) with the alias `@/` → `src/`. Existing `*.test.ts(x)` files live next to their implementations. We add unit tests for the pure / mockable modules and rely on manual device passes for integration and platform-specific behavior (real downloads, real filesystem, real backup exclusion).
 
-### 8.1 Manual test plan
+### 8.1 Unit tests (Jest)
+
+Unit-test targets and the behaviors each covers:
+
+- `OfflineFilesStore.test.ts` — pin/unpin/purge transitions; `parentFolderPins` array add/remove; `isDirectPin` flag interaction; idempotency of double-pin; observable emits on state change. MMKV is mocked.
+- `Downloader.test.ts` — queue ordering, max-4 concurrency, cancel removes from queue + aborts in-flight, backoff schedule (2s / 8s / 30s), respects WiFi-only flag, transitions `pending` → `downloading` → `downloaded` / `failed` via the store. `createDownloadResumable` and the OnlineMonitor are mocked.
+- `pinReactor.test.ts` — given a fake changes feed: md5sum change → enqueue; trash → purge; new doc in pinned folder → pin+enqueue; metadata-only `_rev` bump (same md5sum) → NO enqueue.
+- `OnlineMonitor.test.ts` — subscription/unsubscription, listener fan-out, NetInfo + probe OR-merge.
+- `useOfflineState.test.tsx` — hook re-renders when store emits.
+- `PinnedBadge.test.tsx` — renders correct icon per state.
+- `useIsOnline.test.ts` — the existing test still passes after the refactor to delegate to `OnlineMonitor`.
+
+### 8.2 Manual test plan
 
 Coverage on iOS simulator + physical iPhone + Android (at least simulator).
 
