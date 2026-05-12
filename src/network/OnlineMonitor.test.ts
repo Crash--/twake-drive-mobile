@@ -46,7 +46,7 @@ describe('OnlineMonitor', () => {
     ;(NetInfo as unknown as { __emit: (s: Partial<NetInfoState>) => void }).__emit({
       isConnected: false,
       isInternetReachable: false,
-      type: 'none'
+      type: 'none' as never
     })
     expect(mon.getCurrent()).toBe(true)
     expect(listener).not.toHaveBeenCalled()
@@ -62,7 +62,7 @@ describe('OnlineMonitor', () => {
     ;(NetInfo as unknown as { __emit: (s: Partial<NetInfoState>) => void }).__emit({
       isConnected: false,
       isInternetReachable: false,
-      type: 'none'
+      type: 'none' as never
     })
     // NetInfo offline + initial probe also reports offline (status 0 < 200) → current() = false
     await flush()
@@ -79,7 +79,7 @@ describe('OnlineMonitor', () => {
     ;(NetInfo as unknown as { __emit: (s: Partial<NetInfoState>) => void }).__emit({
       isConnected: false,
       isInternetReachable: false,
-      type: 'none'
+      type: 'none' as never
     })
     expect(listener).not.toHaveBeenCalled()
   })

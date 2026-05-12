@@ -1,15 +1,14 @@
 const mockStore = new Map<string, string>()
 
-jest.mock('react-native-mmkv', () => {
-  class MMKV {
-    set(k: string, v: string): void { mockStore.set(k, v) }
-    getString(k: string): string | undefined { return mockStore.get(k) }
-    delete(k: string): void { mockStore.delete(k) }
-    getAllKeys(): string[] { return Array.from(mockStore.keys()) }
-    clearAll(): void { mockStore.clear() }
-  }
-  return { MMKV }
-})
+jest.mock('react-native-mmkv', () => ({
+  createMMKV: () => ({
+    set: (k: string, v: string): void => { mockStore.set(k, v) },
+    getString: (k: string): string | undefined => mockStore.get(k),
+    remove: (k: string): boolean => mockStore.delete(k),
+    getAllKeys: (): string[] => Array.from(mockStore.keys()),
+    clearAll: (): void => { mockStore.clear() }
+  })
+}))
 
 const mockDownloadAsync = jest.fn()
 const mockPauseAsync = jest.fn()

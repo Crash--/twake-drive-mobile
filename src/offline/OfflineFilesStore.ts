@@ -26,7 +26,7 @@ const readEntry = (fileId: string): OfflineFileEntry | undefined => {
   try {
     return JSON.parse(raw) as OfflineFileEntry
   } catch {
-    offlineFilesStorage.delete(fileKey(fileId))
+    offlineFilesStorage.remove(fileKey(fileId))
     return undefined
   }
 }
@@ -37,7 +37,7 @@ const writeEntry = (entry: OfflineFileEntry): void => {
 }
 
 const deleteEntry = (fileId: string): void => {
-  offlineFilesStorage.delete(fileKey(fileId))
+  offlineFilesStorage.remove(fileKey(fileId))
   notify(fileId)
 }
 
@@ -71,12 +71,12 @@ export const OfflineFilesStore = {
   get: readEntry,
 
   getAll(): OfflineFileEntry[] {
-    return offlineFilesStorage
-      .getAllKeys()
-      .filter(k => k.startsWith(FILE_KEY_PREFIX))
-      .map(k => k.slice(FILE_KEY_PREFIX.length))
-      .map(id => readEntry(id))
-      .filter((e): e is OfflineFileEntry => !!e)
+    const keys = offlineFilesStorage.getAllKeys() as string[]
+    return keys
+      .filter((k: string) => k.startsWith(FILE_KEY_PREFIX))
+      .map((k: string) => k.slice(FILE_KEY_PREFIX.length))
+      .map((id: string) => readEntry(id))
+      .filter((e: OfflineFileEntry | undefined): e is OfflineFileEntry => !!e)
   },
 
   getFolder(dirId: string): OfflineFolderEntry | undefined {
@@ -90,12 +90,12 @@ export const OfflineFilesStore = {
   },
 
   getAllFolders(): OfflineFolderEntry[] {
-    return offlineFilesStorage
-      .getAllKeys()
-      .filter(k => k.startsWith(FOLDER_KEY_PREFIX))
-      .map(k => k.slice(FOLDER_KEY_PREFIX.length))
-      .map(id => OfflineFilesStore.getFolder(id))
-      .filter((e): e is OfflineFolderEntry => !!e)
+    const keys = offlineFilesStorage.getAllKeys() as string[]
+    return keys
+      .filter((k: string) => k.startsWith(FOLDER_KEY_PREFIX))
+      .map((k: string) => k.slice(FOLDER_KEY_PREFIX.length))
+      .map((id: string) => OfflineFilesStore.getFolder(id))
+      .filter((e: OfflineFolderEntry | undefined): e is OfflineFolderEntry => !!e)
   },
 
   pin(fileId: string, meta: PinMeta): void {
@@ -132,7 +132,7 @@ export const OfflineFilesStore = {
   },
 
   async unpinFolder(dirId: string): Promise<void> {
-    offlineFilesStorage.delete(folderKey(dirId))
+    offlineFilesStorage.remove(folderKey(dirId))
     for (const entry of OfflineFilesStore.getAll()) {
       if (!entry.parentFolderPins.includes(dirId)) continue
       const next = {
