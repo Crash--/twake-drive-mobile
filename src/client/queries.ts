@@ -86,9 +86,14 @@ export const sharedWithMeQuery = (): QueryDefinition =>
   Q('io.cozy.sharings').where({ owner: false })
 export const sharedWithMeQueryAs = 'io.cozy.sharings/with-me'
 
+// `trashed: { $ne: true }` (rather than `trashed: false`) so we keep
+// files created before the `trashed` field was introduced — without
+// it, those docs would silently disappear from the recent view (the
+// strict-equality pattern is the regression the project memory file
+// warns about).
 export const recentQuery = (): QueryDefinition =>
   Q('io.cozy.files')
-    .where({ type: 'file', trashed: false })
+    .where({ type: 'file', trashed: { $ne: true } })
     .sortBy([{ updated_at: 'desc' }])
     .limitBy(50)
 export const recentQueryAs = 'io.cozy.files/recent'

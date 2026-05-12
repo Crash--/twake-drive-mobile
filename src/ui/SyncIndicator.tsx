@@ -7,9 +7,18 @@ import { getPouchLink } from '@/pouchdb/triggerReplication'
 /**
  * Subtle spinner that appears while a Pouch replication is in flight.
  *
- * cozy-pouch-link emits 'sync:start' / 'sync:end' events on its internal
- * EventEmitter (see node_modules/cozy-pouch-link/dist/CozyPouchLink.js).
- * The link is a node EventEmitter-style object with .on/.off methods.
+ * Reads `sync:start` / `sync:end` events from the PouchLink instance. These
+ * event names are not part of cozy-pouch-link's documented public API —
+ * they exist on the internal EventEmitter at the time of writing (v60.x,
+ * CozyPouchLink.js) but could be renamed or removed.
+ *
+ * TODO(upstream): once cozy-pouch-link ships an official sync-state hook
+ * (tracked in https://github.com/linagora/cozy-client — search "sync
+ * indicator" / "sync events" in the issue list), switch to it and drop
+ * the optional-chaining + `as any` cast below.
+ *
+ * If the upstream events disappear, this component silently falls back to
+ * never showing the spinner (no error, no crash).
  */
 export const SyncIndicator = (): React.ReactElement | null => {
   const client = useClient()
@@ -21,7 +30,6 @@ export const SyncIndicator = (): React.ReactElement | null => {
     const link = pouch as any
     const onStart = (): void => setSyncing(true)
     const onEnd = (): void => setSyncing(false)
-    // .on / .off may not be present in v60; guard with optional chaining
     link.on?.('sync:start', onStart)
     link.on?.('sync:end', onEnd)
     return () => {
