@@ -6,10 +6,19 @@ interface FileDoc {
   _rev: string
   type?: string
   md5sum?: string
-  size?: number
+  size?: number | string
   name?: string
   dir_id?: string
   trashed?: boolean
+}
+
+const coerceSize = (raw: unknown): number => {
+  if (typeof raw === 'number' && Number.isFinite(raw)) return raw
+  if (typeof raw === 'string') {
+    const n = Number(raw)
+    return Number.isFinite(n) ? n : 0
+  }
+  return 0
 }
 
 interface PouchLikeChange {
@@ -50,9 +59,28 @@ const handleChange = (change: PouchLikeChange): void => {
       ...e,
       md5sum: doc.md5sum!,
       rev: doc._rev,
-      state: 'pending'
+      state: 'pending',
+      // Also refresh metadata in case name/size changed too (or weren't set).
+      name: doc.name ?? e.name,
+      size: coerceSize(doc.size) || e.size
     }))
     Downloader.enqueue(doc._id)
+    return
+  }
+
+  // Pinned file, no md5sum change: opportunistically refresh stale metadata.
+  // Covers entries created before name/size were stored, or before size was
+  // coerced from string.
+  if (entry && (!entry.name || entry.size === 0)) {
+    const freshName = doc.name ?? entry.name
+    const freshSize = coerceSize(doc.size) || entry.size
+    if (freshName !== entry.name || freshSize !== entry.size) {
+      OfflineFilesStore.update(doc._id, e => ({
+        ...e,
+        name: freshName,
+        size: freshSize
+      }))
+    }
     return
   }
 
@@ -61,7 +89,7 @@ const handleChange = (change: PouchLikeChange): void => {
     OfflineFilesStore.pinViaFolder(doc._id, doc.dir_id, {
       rev: doc._rev,
       md5sum: doc.md5sum ?? '',
-      size: doc.size ?? 0,
+      size: coerceSize(doc.size),
       name: doc.name ?? doc._id
     })
     Downloader.enqueue(doc._id)

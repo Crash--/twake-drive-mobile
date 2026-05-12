@@ -22,11 +22,20 @@ interface PendingConfirmation {
 
 const LARGE_FOLDER_THRESHOLD = 1000
 
+const coerceSize = (raw: unknown): number => {
+  if (typeof raw === 'number' && Number.isFinite(raw)) return raw
+  if (typeof raw === 'string') {
+    const n = Number(raw)
+    return Number.isFinite(n) ? n : 0
+  }
+  return 0
+}
+
 const fileMeta = (f: FileShape): { rev: string; md5sum: string; size: number; name: string } => ({
   rev: f._rev ?? '',
   md5sum: f.md5sum ?? '',
-  size: typeof f.size === 'number' ? f.size : 0,
-  name: f.name
+  size: coerceSize(f.size),
+  name: f.name ?? ''
 })
 
 const enumerateFolderChildren = async (
