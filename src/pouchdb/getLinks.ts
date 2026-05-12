@@ -11,11 +11,13 @@ export const REPLICATION_DEBOUNCE_MAX_DELAY = 5 * 60 * 1000 // 5min
 // up within ~30s even without user interaction.
 export const PERIODIC_SYNC_INTERVAL_MS = 30 * 1000
 
+// Only doctypes that the user actually browses offline. io.cozy.sharings,
+// io.cozy.permissions, io.cozy.notes were initially included but their
+// initial replication hangs on fetchRemoteLastSequence — and the data is
+// only useful online anyway (share sheet, viewers). They go directly to
+// StackLink.
 export const offlineDoctypes = [
   'io.cozy.files',
-  'io.cozy.sharings',
-  'io.cozy.permissions',
-  'io.cozy.notes',
   'io.cozy.contacts'
 ] as const
 
