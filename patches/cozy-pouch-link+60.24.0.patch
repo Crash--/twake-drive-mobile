@@ -27,3 +27,24 @@ index fe63937..b26519b 100644
  
              if (parentDir !== null && parentDir !== void 0 && parentDir.path) {
                _path = buildPathWithName(parentDir.path, file.name);
+diff --git a/node_modules/cozy-pouch-link/dist/replicateOnce.js b/node_modules/cozy-pouch-link/dist/replicateOnce.js
+index 1d46f1d..145342f 100644
+--- a/node_modules/cozy-pouch-link/dist/replicateOnce.js
++++ b/node_modules/cozy-pouch-link/dist/replicateOnce.js
+@@ -176,7 +176,15 @@ var replicateOnce = /*#__PURE__*/function () {
+               };
+             }()); // Waiting on each replication
+ 
+-            doctypes = Object.keys(pouchManager.pouches);
++            // Use the clean doctype names (not the prefixed Pouch dbNames) so
++            // downstream consumers (normalizeDocs, client.setData) see e.g.
++            // 'io.cozy.files' rather than 'instance__doctype__io.cozy.files'.
++            // Without this, autoQueryUpdater rejects every update because the
++            // doc._type carries the prefixed dbName and never matches any
++            // query's definition.doctype.
++            doctypes = Object.keys(pouchManager.pouches).map(function (dbName) {
++              return (0, _utils.getDoctypeFromDatabaseName)(dbName);
++            });
+             promises = Object.values(pouchManager.replications);
+             _context2.prev = 9;
+             _context2.next = 12;
