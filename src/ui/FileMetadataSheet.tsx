@@ -1,5 +1,5 @@
 import React, { forwardRef, useImperativeHandle, useRef, useState } from 'react'
-import { Linking, StyleSheet, View } from 'react-native'
+import { Image, Linking, StyleSheet, View } from 'react-native'
 import BottomSheet, { BottomSheetView } from '@gorhom/bottom-sheet'
 import { Button, Divider, Switch, Text, useTheme } from 'react-native-paper'
 import { format } from 'date-fns'
@@ -15,6 +15,7 @@ import { canPreviewInApp } from '@/files/streamUrl'
 import { useIsOnline } from '@/network/useIsOnline'
 import { useOfflineState } from '@/offline/useOfflineState'
 import { useOfflineActions } from '@/offline/useOfflineActions'
+import { FileSystemRepo } from '@/offline/FileSystemRepo'
 import { FileThumbnail } from './FileThumbnail'
 
 export interface FileMetadata {
@@ -156,7 +157,16 @@ export const FileMetadataSheet = forwardRef<FileMetadataSheetHandle, FileMetadat
         {file ? (
           <>
             <View style={styles.header}>
-              <FileThumbnail file={file} size={120} />
+              {isPinned && offlineEntry?.state === 'downloaded' && file.class === 'image' ? (
+                <Image
+                  source={{ uri: FileSystemRepo.localPath(file._id) }}
+                  style={styles.localPreview}
+                  resizeMode="contain"
+                  accessibilityLabel={file.name}
+                />
+              ) : (
+                <FileThumbnail file={file} size={120} />
+              )}
               <Text variant="titleMedium" style={styles.name}>
                 {file.name}
               </Text>
@@ -270,6 +280,12 @@ const Row = ({ label, value }: { label: string; value: string }) => (
 const styles = StyleSheet.create({
   container: { paddingHorizontal: 16, paddingBottom: 32 },
   header: { alignItems: 'center', paddingVertical: 16, gap: 8 },
+  localPreview: {
+    width: '100%',
+    aspectRatio: 4 / 3,
+    borderRadius: 8,
+    backgroundColor: '#00000010'
+  },
   name: { textAlign: 'center' },
   row: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 12 },
   label: { flex: 1 },
