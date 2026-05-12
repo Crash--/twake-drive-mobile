@@ -5,6 +5,9 @@ import * as FileSystem from 'expo-file-system/legacy'
 import FileViewer from 'react-native-file-viewer'
 import type CozyClient from 'cozy-client'
 
+import { OfflineFilesStore } from '@/offline/OfflineFilesStore'
+import { FileSystemRepo } from '@/offline/FileSystemRepo'
+
 export interface OpenableFile {
   _id: string
   name: string
@@ -22,6 +25,14 @@ export const openFileNatively = async (
   client: CozyClient,
   file: OpenableFile
 ): Promise<void> => {
+  if (OfflineFilesStore.isPinnedAndDownloaded(file._id)) {
+    await FileViewer.open(FileSystemRepo.localPath(file._id), {
+      showOpenWithDialog: true,
+      showAppsSuggestions: true
+    })
+    return
+  }
+
   const stackClient = client.getStackClient() as unknown as MinimalStackClient
   const stackUri = stackClient.uri
   const token = stackClient.getAccessToken()

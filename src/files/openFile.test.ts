@@ -2,6 +2,9 @@ import * as FileSystem from 'expo-file-system/legacy'
 import FileViewer from 'react-native-file-viewer'
 
 import { openFileNatively } from './openFile'
+import { OfflineFilesStore } from '@/offline/OfflineFilesStore'
+
+const mockIsPinnedAndDownloaded = OfflineFilesStore.isPinnedAndDownloaded as jest.Mock
 
 jest.mock('expo-file-system/legacy', () => ({
   cacheDirectory: 'file:///cache/',
@@ -12,6 +15,13 @@ jest.mock('expo-file-system/legacy', () => ({
 jest.mock('react-native-file-viewer', () => ({
   __esModule: true,
   default: { open: jest.fn().mockResolvedValue(undefined) }
+}))
+
+jest.mock('@/offline/OfflineFilesStore', () => ({
+  OfflineFilesStore: { isPinnedAndDownloaded: jest.fn().mockReturnValue(false) }
+}))
+jest.mock('@/offline/FileSystemRepo', () => ({
+  FileSystemRepo: { localPath: (id: string) => `file:///offline/${id}` }
 }))
 
 const makeClient = (token: string | null = 'tok-1', uri = 'https://alice.example.com') =>
@@ -59,6 +69,13 @@ describe('openFileNatively', () => {
     await expect(
       openFileNatively(makeClient(), { _id: 'abc', name: 't.pdf' })
     ).rejects.toThrow(/HTTP 404/)
+  })
+
+  it('opens the local blob directly when pinned + downloaded (no download call)', async () => {
+    mockIsPinnedAndDownloaded.mockReturnValueOnce(true)
+    await openFileNatively(makeClient(), { _id: 'abc', name: 't.pdf' })
+    expect(FileSystem.downloadAsync).not.toHaveBeenCalled()
+    expect(FileViewer.open).toHaveBeenCalledWith('file:///offline/abc', expect.any(Object))
   })
 
   it('sanitizes filename slashes', async () => {
