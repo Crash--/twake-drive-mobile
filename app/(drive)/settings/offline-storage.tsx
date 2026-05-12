@@ -35,7 +35,8 @@ export default function OfflineStorageScreen() {
     return () => { off1(); off2(); off3() }
   }, [])
 
-  const directFiles = useMemo(() => files.filter(f => f.isDirectPin), [files])
+  // Show every pinned file, regardless of how it was pinned (direct vs via folder).
+  // The user expects to see what's actually cached, not just direct pins.
   const inProgress = useMemo(() => files.filter(f => f.state === 'downloading'), [files])
   const failed = useMemo(() => files.filter(f => f.state === 'failed'), [files])
 
@@ -84,7 +85,7 @@ export default function OfflineStorageScreen() {
           {failed.map(f => (
             <List.Item
               key={f.fileId}
-              title={f.fileId}
+              title={f.name || f.fileId}
               description={f.lastError ?? t('drive.offline.failed')}
               right={() => (
                 <Button
@@ -124,13 +125,13 @@ export default function OfflineStorageScreen() {
           })}
       </List.Section>
       <List.Section title={t('drive.offline.filesSection')}>
-        {directFiles
+        {files
           .slice()
           .sort((a, b) => b.pinnedAt - a.pinnedAt)
           .map(f => (
             <List.Item
               key={f.fileId}
-              title={f.fileId}
+              title={f.name || f.fileId}
               description={formatFileSize(f.size)}
               right={() => (
                 <Button mode="text" onPress={() => void OfflineFilesStore.unpin(f.fileId)}>

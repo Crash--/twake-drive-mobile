@@ -58,6 +58,7 @@ const buildEntry = (
   rev: meta.rev,
   md5sum: meta.md5sum,
   size: meta.size,
+  name: meta.name,
   bytesDownloaded: prev?.bytesDownloaded,
   localPath: FileSystemRepo.localPath(fileId),
   pinnedAt: prev?.pinnedAt ?? Date.now(),

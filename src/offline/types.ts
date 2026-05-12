@@ -11,6 +11,7 @@ export interface OfflineFileEntry {
   rev: string
   md5sum: string
   size: number
+  name: string
   bytesDownloaded?: number
   localPath: string
   pinnedAt: number
