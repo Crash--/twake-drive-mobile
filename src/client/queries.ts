@@ -93,7 +93,15 @@ export const recentQuery = (): QueryDefinition =>
     .limitBy(50)
 export const recentQueryAs = 'io.cozy.files/recent'
 
-export const trashQuery = (): QueryDefinition => Q('io.cozy.files').where({ dir_id: TRASH_DIR_ID })
+// indexFields + limitBy is critical when this query falls through to the
+// local Pouch (offline / warmed up): without an index hint, pouch-find
+// scans the whole io.cozy.files table (~10k docs) and the trash screen
+// hangs for several seconds. With the index it's near-instant.
+export const trashQuery = (): QueryDefinition =>
+  Q('io.cozy.files')
+    .where({ dir_id: TRASH_DIR_ID })
+    .indexFields(['dir_id'])
+    .limitBy(200)
 export const trashQueryAs = 'io.cozy.files/trash'
 
 export const fileByIdQuery = (id: string): QueryDefinition => Q('io.cozy.files').getById(id)
