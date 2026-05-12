@@ -202,7 +202,7 @@ export const FileMetadataSheet = forwardRef<FileMetadataSheetHandle, FileMetadat
                 mode="contained"
                 onPress={onOpen}
                 loading={opening}
-                disabled={opening || !isOnline}
+                disabled={opening || (!isOnline && offlineEntry?.state !== 'downloaded')}
                 icon="open-in-new"
               >
                 {t('drive.fileMeta.open')}
