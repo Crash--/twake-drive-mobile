@@ -22,15 +22,8 @@ let appStateHandler: NativeEventSubscription | undefined
  */
 export const listenAppState = (eventEmitter: EventEmitter): void => {
   appStateHandler = AppState.addEventListener('change', nextAppState => {
-    console.log('[PouchDB.appState] event', { prev: appState, next: nextAppState })
-    if (isGoingToWakeUp(nextAppState)) {
-      console.log('[PouchDB.appState] -> resume')
-      eventEmitter.emit('resume')
-    }
-    if (isGoingToSleep(nextAppState)) {
-      console.log('[PouchDB.appState] -> pause')
-      eventEmitter.emit('pause')
-    }
+    if (isGoingToWakeUp(nextAppState)) eventEmitter.emit('resume')
+    if (isGoingToSleep(nextAppState)) eventEmitter.emit('pause')
     appState = nextAppState
   })
 }

@@ -18,18 +18,11 @@ export const useForegroundSync = (): void => {
   const client = useClient()
   const prevState = useRef<AppStateStatus>(AppState.currentState)
   useEffect(() => {
-    if (!client) {
-      console.log('[useForegroundSync] no client yet, skipping setup')
-      return
-    }
-    console.log('[useForegroundSync] mounted, current AppState=', AppState.currentState)
+    if (!client) return
     const sub = AppState.addEventListener('change', (next: AppStateStatus) => {
-      const prev = prevState.current
-      const wasInactive = prev.match(/inactive|background/)
+      const wasInactive = prevState.current.match(/inactive|background/)
       prevState.current = next
-      console.log('[useForegroundSync] AppState change', { prev, next, wasInactive: !!wasInactive })
       if (wasInactive && next === 'active') {
-        console.log('[useForegroundSync] bg→active: triggering immediate sync')
         triggerPouchReplication(client, undefined, { immediate: true })
       }
     })
