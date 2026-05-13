@@ -59,17 +59,8 @@ const PdfPreview = ({
   const [loaded, setLoaded] = useState(false)
   const [progress, setProgress] = useState(0)
   const [error, setError] = useState<string | null>(null)
-  // PDFKit's internal scroll consumes vertical drags within the document,
-  // so the drag-down-dismiss gesture can only win when the user is on
-  // page 1 (the natural "top" of the doc). Past page 1 we defer to the
-  // PDF scroll; user can iOS-edge-swipe to dismiss instead.
-  const [atFirstPage, setAtFirstPage] = useState(true)
   return (
-    <DismissibleViewer
-      onDismiss={onDismiss}
-      enabled={atFirstPage}
-      style={styles.viewerContainer}
-    >
+    <DismissibleViewer onDismiss={onDismiss} style={styles.viewerContainer}>
       {thumbnailUrl && !loaded ? (
         <Image
           source={{ uri: thumbnailUrl }}
@@ -81,10 +72,15 @@ const PdfPreview = ({
       <Pdf
         source={{ uri: source.uri, headers: source.headers, cache: true }}
         trustAllCerts={false}
+        // Horizontal paging — swipe left/right between pages. Frees the
+        // vertical axis for drag-down-dismiss and matches what mobile PDF
+        // viewers (iOS Quick Look, PDF Expert) do. Pinch + double-tap
+        // zoom within a page still work via PDFKit's natives.
+        enablePaging
+        horizontal
         style={[styles.pdf, !loaded && styles.transparent]}
         onLoadProgress={p => setProgress(p)}
         onLoadComplete={() => setLoaded(true)}
-        onPageChanged={(page: number) => setAtFirstPage(page === 1)}
         onError={err => {
           console.error('[PreviewScreen] pdf error', err)
           setError(typeof err === 'string' ? err : (err as Error)?.message ?? 'PDF error')
