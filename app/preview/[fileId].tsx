@@ -54,16 +54,27 @@ const LoadingOverlay = ({ progress }: { progress?: number }) => (
 
 const PdfPreview = ({
   source,
-  thumbnailUrl
+  thumbnailUrl,
+  onDismiss
 }: {
   source: StreamSource
   thumbnailUrl: string | null
+  onDismiss: () => void
 }) => {
   const [loaded, setLoaded] = useState(false)
   const [progress, setProgress] = useState(0)
   const [error, setError] = useState<string | null>(null)
+  // Only allow swipe-down dismiss when the PDF is at page 1, otherwise the
+  // gesture conflicts with the PDF's internal vertical scroll between pages.
+  // (Pixel-level scroll position within a page is not exposed by
+  // react-native-pdf; "on page 1" is the closest proxy we get.)
+  const [atFirstPage, setAtFirstPage] = useState(true)
   return (
-    <View style={styles.viewerContainer}>
+    <DismissibleViewer
+      onDismiss={onDismiss}
+      style={styles.viewerContainer}
+      enabled={atFirstPage}
+    >
       {thumbnailUrl && !loaded ? (
         <Image
           source={{ uri: thumbnailUrl }}
@@ -78,13 +89,14 @@ const PdfPreview = ({
         style={[styles.pdf, !loaded && styles.transparent]}
         onLoadProgress={p => setProgress(p)}
         onLoadComplete={() => setLoaded(true)}
+        onPageChanged={(page: number) => setAtFirstPage(page === 1)}
         onError={err => {
           console.error('[PreviewScreen] pdf error', err)
           setError(typeof err === 'string' ? err : (err as Error)?.message ?? 'PDF error')
         }}
       />
       {error ? <ErrorOverlay message={error} /> : !loaded ? <LoadingOverlay progress={progress} /> : null}
-    </View>
+    </DismissibleViewer>
   )
 }
 
@@ -123,10 +135,12 @@ const ImagePreview = ({
 
 const VideoPreview = ({
   source,
-  onDismiss
+  onDismiss,
+  onTap
 }: {
   source: StreamSource
   onDismiss: () => void
+  onTap?: () => void
 }) => {
   const player = useVideoPlayer({ uri: source.uri, headers: source.headers }, p => {
     p.loop = false
@@ -141,7 +155,7 @@ const VideoPreview = ({
     return () => sub.remove()
   }, [player])
   return (
-    <DismissibleViewer onDismiss={onDismiss} style={styles.viewerContainer}>
+    <DismissibleViewer onDismiss={onDismiss} onTap={onTap} style={styles.viewerContainer}>
       <VideoView
         player={player}
         style={styles.video}
@@ -333,7 +347,13 @@ export default function PreviewScreen() {
     if (!source) return <LoadingState />
     switch (kind) {
       case 'pdf':
-        return <PdfPreview source={source} thumbnailUrl={thumbnailUrl} />
+        return (
+          <PdfPreview
+            source={source}
+            thumbnailUrl={thumbnailUrl}
+            onDismiss={() => router.back()}
+          />
+        )
       case 'image':
         return (
           <ImagePreview
@@ -344,7 +364,13 @@ export default function PreviewScreen() {
           />
         )
       case 'video':
-        return <VideoPreview source={source} onDismiss={() => router.back()} />
+        return (
+          <VideoPreview
+            source={source}
+            onDismiss={() => router.back()}
+            onTap={restoreBar}
+          />
+        )
       case 'audio':
         return <AudioPreview source={source} name={file?.name ?? ''} />
       case 'text':
@@ -371,13 +397,38 @@ export default function PreviewScreen() {
   // translucent bottom bar with Share / Pin / Details. Other kinds keep
   // their header + footer.
   const isImage = kind === 'image'
+  const isVideo = kind === 'video'
+  const isPdf = kind === 'pdf'
   // Chromeless = no AppBar at top, transparent container so the modal
-  // dismiss reveals the previous screen. Image gets a tap-toggleable
-  // bottom bar (since there's no other chrome); video keeps the bar
-  // always visible alongside the native player controls.
-  const isChromeless = kind === 'image' || kind === 'video'
+  // dismiss reveals the previous screen.
+  const isChromeless = isImage || isVideo || isPdf
   const isPinned = !!offlineEntry?.isDirectPin
-  const showImageBar = isImage && uiVisible && !!file
+
+  // Bottom-bar visibility by kind:
+  //   image: hidden by default, tap toggles
+  //   video: visible 3 s after entry then auto-hides; tap restores
+  //   pdf:   always visible (read-mode users want their actions)
+  //   audio/text: always visible (already chromed)
+  const showBar =
+    isImage ? uiVisible :
+    isVideo ? uiVisible :
+    kind !== 'unsupported' && !!file
+  const restoreBar = (): void => {
+    setUiVisible(true)
+  }
+
+  // Auto-hide the video bar after a few seconds of inactivity.
+  useEffect(() => {
+    if (!isVideo || !uiVisible) return
+    const t = setTimeout(() => setUiVisible(false), 3000)
+    return () => clearTimeout(t)
+  }, [isVideo, uiVisible])
+
+  // Video starts with the bar visible (signal to the user that actions
+  // exist); image starts hidden (pure-fullscreen feel).
+  useEffect(() => {
+    if (isVideo) setUiVisible(true)
+  }, [isVideo])
 
   const togglePin = (): void => {
     if (!file) return
@@ -419,7 +470,7 @@ export default function PreviewScreen() {
           {externalError}
         </Text>
       ) : null}
-      {(showImageBar || (!isImage && kind !== 'unsupported' && file)) ? (
+      {showBar ? (
         <View
           style={[
             styles.imageBottomBar,

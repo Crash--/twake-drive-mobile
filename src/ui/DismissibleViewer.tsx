@@ -16,6 +16,14 @@ interface Props {
   onDismiss: () => void
   children: React.ReactNode
   style?: ViewStyle
+  /** When false, the gesture detector ignores all drags. Use this to
+   *  defer to inner scroll behaviour (e.g. PDF scrolling past page 1). */
+  enabled?: boolean
+  /** Called on a discrete tap inside the viewer (composed simultaneously
+   *  with the pan, so AVPlayer / Pdf taps still get through to the
+   *  native view). Used by the preview screen to surface the auto-hidden
+   *  bottom bar on the video viewer. */
+  onTap?: () => void
 }
 
 /**
@@ -27,10 +35,17 @@ interface Props {
  * For zoom + pan use ZoomableImage instead; this wrapper is for content
  * that brings its own gesture handling (video, PDF, etc.).
  */
-export const DismissibleViewer = ({ onDismiss, children, style }: Props): React.ReactElement => {
+export const DismissibleViewer = ({
+  onDismiss,
+  children,
+  style,
+  enabled = true,
+  onTap
+}: Props): React.ReactElement => {
   const translateY = useSharedValue(0)
 
   const pan = Gesture.Pan()
+    .enabled(enabled)
     // Don't compete with taps or short jitters.
     .minDistance(20)
     // Activate only on a downward drag.
@@ -69,8 +84,20 @@ export const DismissibleViewer = ({ onDismiss, children, style }: Props): React.
     ]
   }))
 
+  const tap = Gesture.Tap()
+    .maxDistance(10)
+    .maxDuration(250)
+    .onEnd(() => {
+      if (onTap) runOnJS(onTap)()
+    })
+
+  // Pan + tap run simultaneously: a quick tap fires onTap, a drag past the
+  // threshold dismisses. Both compose alongside whatever gestures the
+  // native child (AVPlayer, Pdf, …) installs on itself.
+  const composed = Gesture.Simultaneous(pan, tap)
+
   return (
-    <GestureDetector gesture={pan}>
+    <GestureDetector gesture={composed}>
       <Animated.View style={[StyleSheet.absoluteFill, backdropStyle]}>
         <Animated.View style={[StyleSheet.absoluteFill, transformStyle, style]}>
           {children}
