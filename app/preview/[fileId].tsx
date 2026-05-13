@@ -49,16 +49,27 @@ const LoadingOverlay = ({ progress }: { progress?: number }) => (
 
 const PdfPreview = ({
   source,
-  thumbnailUrl
+  thumbnailUrl,
+  onDismiss
 }: {
   source: StreamSource
   thumbnailUrl: string | null
+  onDismiss: () => void
 }) => {
   const [loaded, setLoaded] = useState(false)
   const [progress, setProgress] = useState(0)
   const [error, setError] = useState<string | null>(null)
+  // PDFKit's internal scroll consumes vertical drags within the document,
+  // so the drag-down-dismiss gesture can only win when the user is on
+  // page 1 (the natural "top" of the doc). Past page 1 we defer to the
+  // PDF scroll; user can iOS-edge-swipe to dismiss instead.
+  const [atFirstPage, setAtFirstPage] = useState(true)
   return (
-    <View style={styles.viewerContainer}>
+    <DismissibleViewer
+      onDismiss={onDismiss}
+      enabled={atFirstPage}
+      style={styles.viewerContainer}
+    >
       {thumbnailUrl && !loaded ? (
         <Image
           source={{ uri: thumbnailUrl }}
@@ -73,13 +84,14 @@ const PdfPreview = ({
         style={[styles.pdf, !loaded && styles.transparent]}
         onLoadProgress={p => setProgress(p)}
         onLoadComplete={() => setLoaded(true)}
+        onPageChanged={(page: number) => setAtFirstPage(page === 1)}
         onError={err => {
           console.error('[PreviewScreen] pdf error', err)
           setError(typeof err === 'string' ? err : (err as Error)?.message ?? 'PDF error')
         }}
       />
       {error ? <ErrorOverlay message={error} /> : !loaded ? <LoadingOverlay progress={progress} /> : null}
-    </View>
+    </DismissibleViewer>
   )
 }
 
@@ -148,7 +160,15 @@ const VideoPreview = ({
   )
 }
 
-const AudioPreview = ({ source, name }: { source: StreamSource; name: string }) => {
+const AudioPreview = ({
+  source,
+  name,
+  onDismiss
+}: {
+  source: StreamSource
+  name: string
+  onDismiss: () => void
+}) => {
   const player = useAudioPlayer({ uri: source.uri, headers: source.headers })
   const status = useAudioPlayerStatus(player)
   // Keep audio playing when the app is backgrounded or the device is silenced.
@@ -165,7 +185,10 @@ const AudioPreview = ({ source, name }: { source: StreamSource; name: string }) 
   const duration = ready ? status.duration : 0
   const position = ready ? status.currentTime : 0
   return (
-    <View style={[styles.viewerContainer, styles.audioContainer]}>
+    <DismissibleViewer
+      onDismiss={onDismiss}
+      style={[styles.viewerContainer, styles.audioContainer]}
+    >
       <View style={styles.audioCard}>
         <IconButton
           icon={status.playing ? 'pause' : 'play'}
@@ -189,15 +212,18 @@ const AudioPreview = ({ source, name }: { source: StreamSource; name: string }) 
         </View>
       </View>
       {!ready ? <LoadingOverlay /> : null}
-    </View>
+    </DismissibleViewer>
   )
 }
 
-const TextPreview = ({ source }: { source: StreamSource }) => {
+const TextPreview = ({ source, onDismiss }: { source: StreamSource; onDismiss: () => void }) => {
   const theme = useTheme()
   const [content, setContent] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [truncated, setTruncated] = useState(false)
+  // Drag-down dismiss is only safe when the user is at the top of the
+  // scroll, otherwise it competes with ScrollView's vertical drag.
+  const [atTop, setAtTop] = useState(true)
   useEffect(() => {
     let cancelled = false
     void (async () => {
@@ -226,16 +252,22 @@ const TextPreview = ({ source }: { source: StreamSource }) => {
   if (error) return <ErrorOverlay message={error} />
   if (content === null) return <LoadingOverlay />
   return (
-    <ScrollView style={[styles.textScroll, { backgroundColor: theme.colors.background }]}>
-      <Text style={[styles.text, { color: theme.colors.onBackground }]} selectable>
-        {content}
-      </Text>
-      {truncated ? (
-        <Text style={[styles.textTruncated, { color: theme.colors.onSurfaceVariant }]}>
-          … (truncated)
+    <DismissibleViewer onDismiss={onDismiss} enabled={atTop} style={styles.viewerContainer}>
+      <ScrollView
+        style={[styles.textScroll, { backgroundColor: theme.colors.background }]}
+        onScroll={e => setAtTop(e.nativeEvent.contentOffset.y <= 0)}
+        scrollEventThrottle={32}
+      >
+        <Text style={[styles.text, { color: theme.colors.onBackground }]} selectable>
+          {content}
         </Text>
-      ) : null}
-    </ScrollView>
+        {truncated ? (
+          <Text style={[styles.textTruncated, { color: theme.colors.onSurfaceVariant }]}>
+            … (truncated)
+          </Text>
+        ) : null}
+      </ScrollView>
+    </DismissibleViewer>
   )
 }
 
@@ -310,7 +342,13 @@ export default function PreviewScreen() {
     if (!source) return <LoadingState />
     switch (kind) {
       case 'pdf':
-        return <PdfPreview source={source} thumbnailUrl={thumbnailUrl} />
+        return (
+          <PdfPreview
+            source={source}
+            thumbnailUrl={thumbnailUrl}
+            onDismiss={() => router.back()}
+          />
+        )
       case 'image':
         return (
           <ImagePreview
@@ -327,9 +365,15 @@ export default function PreviewScreen() {
           />
         )
       case 'audio':
-        return <AudioPreview source={source} name={file?.name ?? ''} />
+        return (
+          <AudioPreview
+            source={source}
+            name={file?.name ?? ''}
+            onDismiss={() => router.back()}
+          />
+        )
       case 'text':
-        return <TextPreview source={source} />
+        return <TextPreview source={source} onDismiss={() => router.back()} />
       case 'unsupported':
       default:
         return externalError ? (
@@ -348,19 +392,18 @@ export default function PreviewScreen() {
     }
   }
 
-  // Chromeless = no AppBar at top, transparent container so the modal
-  // dismiss reveals the previous screen. Image + video also have
-  // drag-down-to-dismiss (image via ZoomableImage, video via
-  // DismissibleViewer). PDF gets chromeless too but no drag-dismiss —
-  // PDFKit's internal scroll wins on iOS, so we rely on the iOS
-  // edge-swipe / Android back button instead.
+  // No AppBar for kinds whose content is more visual than informational.
   const isChromeless = kind === 'image' || kind === 'video' || kind === 'pdf'
+  // Every supported kind gets a transparent container so the drag-down
+  // dismiss reveals the previous screen via the DismissibleViewer's
+  // backdrop fade. Only the 'unsupported' fallback panel needs black.
+  const isTransparent = kind !== 'unsupported'
 
   return (
     <View
       style={[
         styles.container,
-        isChromeless && styles.containerTransparent
+        isTransparent && styles.containerTransparent
       ]}
     >
       {!isChromeless ? <AppBar title={title} onBack={() => router.back()} /> : null}

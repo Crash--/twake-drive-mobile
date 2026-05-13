@@ -1,5 +1,5 @@
 import React from 'react'
-import { StyleSheet, ViewStyle } from 'react-native'
+import { StyleProp, StyleSheet, ViewStyle } from 'react-native'
 import Animated, {
   runOnJS,
   useAnimatedStyle,
@@ -15,7 +15,7 @@ const DISMISS_VELOCITY = 800
 interface Props {
   onDismiss: () => void
   children: React.ReactNode
-  style?: ViewStyle
+  style?: StyleProp<ViewStyle>
   /** When false, the gesture detector ignores all drags. Use this to
    *  defer to inner scroll behaviour (e.g. PDF scrolling past page 1). */
   enabled?: boolean
