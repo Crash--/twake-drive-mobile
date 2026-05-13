@@ -85,12 +85,10 @@ const PdfPreview = ({
 const ImagePreview = ({
   source,
   thumbnailUrl,
-  onSingleTap,
   onDismiss
 }: {
   source: StreamSource
   thumbnailUrl: string | null
-  onSingleTap: () => void
   onDismiss: () => void
 }) => {
   const [loaded, setLoaded] = useState(false)
@@ -101,7 +99,6 @@ const ImagePreview = ({
         uri={source.uri}
         headers={source.headers}
         placeholderUri={thumbnailUrl}
-        onSingleTap={onSingleTap}
         onDismiss={onDismiss}
         onLoad={() => setLoaded(true)}
         onError={err => {
@@ -229,7 +226,6 @@ export default function PreviewScreen() {
   const { fileId } = useLocalSearchParams<{ fileId: string }>()
   const [externalLoading, setExternalLoading] = useState(false)
   const [externalError, setExternalError] = useState<string | null>(null)
-  const [uiVisible, setUiVisible] = useState(true)
   const fallbackTriggered = useRef(false)
 
   const fileLookup = useQuery(fileByIdQuery(fileId ?? ''), {
@@ -309,7 +305,6 @@ export default function PreviewScreen() {
           <ImagePreview
             source={source}
             thumbnailUrl={thumbnailUrl}
-            onSingleTap={() => setUiVisible(v => !v)}
             onDismiss={() => router.back()}
           />
         )
@@ -337,30 +332,17 @@ export default function PreviewScreen() {
     }
   }
 
-  // Image viewer is fullscreen with toggleable chrome. Other kinds keep the
-  // chrome permanently shown.
+  // Image viewer is fullscreen, no chrome. Swipe down dismisses; iOS
+  // edge-swipe / Android back button also work. Other kinds keep their
+  // header + footer.
   const isImage = kind === 'image'
-  const chromeVisible = !isImage || uiVisible
 
   return (
     <View style={styles.container}>
-      {isImage ? (
-        <>
-          {isLoadingFile ? <LoadingState /> : renderViewer()}
-          {chromeVisible ? (
-            <View style={styles.overlayChromeTop} pointerEvents="box-none">
-              <AppBar title={title} onBack={() => router.back()} />
-            </View>
-          ) : null}
-        </>
-      ) : (
-        <>
-          <AppBar title={title} onBack={() => router.back()} />
-          {isLoadingFile ? <LoadingState /> : renderViewer()}
-        </>
-      )}
-      {kind !== 'unsupported' && file && chromeVisible ? (
-        <View style={[styles.actions, isImage && styles.overlayChromeBottom]}>
+      {!isImage ? <AppBar title={title} onBack={() => router.back()} /> : null}
+      {isLoadingFile ? <LoadingState /> : renderViewer()}
+      {kind !== 'unsupported' && file && !isImage ? (
+        <View style={styles.actions}>
           <Button
             mode="text"
             icon="open-in-new"
@@ -398,20 +380,6 @@ const styles = StyleSheet.create({
   fallbackPanel: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   actions: { paddingVertical: 8, paddingHorizontal: 16, backgroundColor: '#000' },
   actionError: { color: '#ff6b6b', textAlign: 'center', marginTop: 4, fontSize: 12 },
-  overlayChromeTop: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    backgroundColor: 'rgba(0,0,0,0.55)'
-  },
-  overlayChromeBottom: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    backgroundColor: 'rgba(0,0,0,0.55)'
-  },
   overlay: {
     ...StyleSheet.absoluteFillObject,
     alignItems: 'center',
