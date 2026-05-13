@@ -4,6 +4,7 @@ import { Image } from 'expo-image'
 import Animated, {
   runOnJS,
   useAnimatedStyle,
+  useDerivedValue,
   useSharedValue,
   withSpring,
   withTiming
@@ -75,7 +76,8 @@ export const ZoomableImage = ({
         translateX.value = savedTranslateX.value + e.translationX
         translateY.value = savedTranslateY.value + e.translationY
       } else {
-        // Drag-to-dismiss: only vertical when at base scale.
+        // Drag-to-dismiss: image follows finger on both axes.
+        translateX.value = e.translationX
         translateY.value = e.translationY
       }
     })
@@ -91,6 +93,7 @@ export const ZoomableImage = ({
       if (dismiss && onDismiss) {
         runOnJS(onDismiss)()
       } else {
+        translateX.value = withSpring(0)
         translateY.value = withSpring(0)
       }
     })
@@ -124,27 +127,46 @@ export const ZoomableImage = ({
     Gesture.Exclusive(doubleTap, singleTap)
   )
 
-  const animatedStyle = useAnimatedStyle(() => ({
-    transform: [
-      { translateX: translateX.value },
-      { translateY: translateY.value },
-      { scale: scale.value }
-    ]
+  // Progress of the drag-to-dismiss interaction. Only meaningful at base
+  // scale; clamped 0..1 against the dismiss threshold. Drives the backdrop
+  // fade and the image scale-down so the dismissal looks like a modal
+  // shrinking into the void rather than a flat slide.
+  const dragProgress = useDerivedValue(() => {
+    if (scale.value > 1) return 0
+    const ratio = Math.abs(translateY.value) / DISMISS_TRANSLATION_PX
+    return ratio > 1 ? 1 : ratio
+  })
+
+  const backdropStyle = useAnimatedStyle(() => ({
+    backgroundColor: `rgba(0,0,0,${1 - 0.7 * dragProgress.value})`
   }))
+
+  const transformStyle = useAnimatedStyle(() => {
+    const dismissScale = scale.value <= 1 ? 1 - 0.15 * dragProgress.value : 1
+    return {
+      transform: [
+        { translateX: translateX.value },
+        { translateY: translateY.value },
+        { scale: scale.value * dismissScale }
+      ]
+    }
+  })
 
   return (
     <GestureDetector gesture={composed}>
-      <Animated.View style={[StyleSheet.absoluteFill, animatedStyle]}>
-        <Image
-          source={{ uri, headers }}
-          placeholder={placeholderUri ? { uri: placeholderUri } : undefined}
-          placeholderContentFit="contain"
-          style={styles.image}
-          contentFit="contain"
-          transition={150}
-          onLoad={onLoad}
-          onError={onError}
-        />
+      <Animated.View style={[StyleSheet.absoluteFill, backdropStyle]}>
+        <Animated.View style={[StyleSheet.absoluteFill, transformStyle]}>
+          <Image
+            source={{ uri, headers }}
+            placeholder={placeholderUri ? { uri: placeholderUri } : undefined}
+            placeholderContentFit="contain"
+            style={styles.image}
+            contentFit="contain"
+            transition={150}
+            onLoad={onLoad}
+            onError={onError}
+          />
+        </Animated.View>
       </Animated.View>
     </GestureDetector>
   )
