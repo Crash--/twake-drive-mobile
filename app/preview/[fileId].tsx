@@ -24,7 +24,6 @@ import { OfflineFilesStore } from '@/offline/OfflineFilesStore'
 import { FileSystemRepo } from '@/offline/FileSystemRepo'
 import { useOfflineState } from '@/offline/useOfflineState'
 import { ZoomableImage } from '@/ui/ZoomableImage'
-import { DismissibleViewer } from '@/ui/DismissibleViewer'
 
 const TEXT_MAX_BYTES = 1_000_000
 
@@ -49,23 +48,16 @@ const LoadingOverlay = ({ progress }: { progress?: number }) => (
 
 const PdfPreview = ({
   source,
-  thumbnailUrl,
-  onDismiss
+  thumbnailUrl
 }: {
   source: StreamSource
   thumbnailUrl: string | null
-  onDismiss: () => void
 }) => {
   const [loaded, setLoaded] = useState(false)
   const [progress, setProgress] = useState(0)
   const [error, setError] = useState<string | null>(null)
-  const [atFirstPage, setAtFirstPage] = useState(true)
   return (
-    <DismissibleViewer
-      onDismiss={onDismiss}
-      enabled={atFirstPage}
-      style={styles.viewerContainer}
-    >
+    <View style={styles.viewerContainer}>
       {thumbnailUrl && !loaded ? (
         <Image
           source={{ uri: thumbnailUrl }}
@@ -80,25 +72,22 @@ const PdfPreview = ({
         style={[styles.pdf, !loaded && styles.transparent]}
         onLoadProgress={p => setProgress(p)}
         onLoadComplete={() => setLoaded(true)}
-        onPageChanged={(page: number) => setAtFirstPage(page === 1)}
         onError={err => {
           console.error('[PreviewScreen] pdf error', err)
           setError(typeof err === 'string' ? err : (err as Error)?.message ?? 'PDF error')
         }}
       />
       {error ? <ErrorOverlay message={error} /> : !loaded ? <LoadingOverlay progress={progress} /> : null}
-    </DismissibleViewer>
+    </View>
   )
 }
 
 const ImagePreview = ({
   source,
-  thumbnailUrl,
-  onDismiss
+  thumbnailUrl
 }: {
   source: StreamSource
   thumbnailUrl: string | null
-  onDismiss: () => void
 }) => {
   const [loaded, setLoaded] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -108,7 +97,6 @@ const ImagePreview = ({
         uri={source.uri}
         headers={source.headers}
         placeholderUri={thumbnailUrl}
-        onDismiss={onDismiss}
         onLoad={() => setLoaded(true)}
         onError={err => {
           console.error('[PreviewScreen] image error', err)
@@ -121,13 +109,7 @@ const ImagePreview = ({
   )
 }
 
-const VideoPreview = ({
-  source,
-  onDismiss
-}: {
-  source: StreamSource
-  onDismiss: () => void
-}) => {
+const VideoPreview = ({ source }: { source: StreamSource }) => {
   const player = useVideoPlayer({ uri: source.uri, headers: source.headers }, p => {
     p.loop = false
     p.staysActiveInBackground = true
@@ -141,7 +123,7 @@ const VideoPreview = ({
     return () => sub.remove()
   }, [player])
   return (
-    <DismissibleViewer onDismiss={onDismiss} style={styles.viewerContainer}>
+    <View style={styles.viewerContainer}>
       <VideoView
         player={player}
         style={styles.video}
@@ -152,19 +134,11 @@ const VideoPreview = ({
         nativeControls
       />
       {!ready ? <LoadingOverlay /> : null}
-    </DismissibleViewer>
+    </View>
   )
 }
 
-const AudioPreview = ({
-  source,
-  name,
-  onDismiss
-}: {
-  source: StreamSource
-  name: string
-  onDismiss: () => void
-}) => {
+const AudioPreview = ({ source, name }: { source: StreamSource; name: string }) => {
   const player = useAudioPlayer({ uri: source.uri, headers: source.headers })
   const status = useAudioPlayerStatus(player)
   // Keep audio playing when the app is backgrounded or the device is silenced.
@@ -181,10 +155,7 @@ const AudioPreview = ({
   const duration = ready ? status.duration : 0
   const position = ready ? status.currentTime : 0
   return (
-    <DismissibleViewer
-      onDismiss={onDismiss}
-      style={[styles.viewerContainer, styles.audioContainer]}
-    >
+    <View style={[styles.viewerContainer, styles.audioContainer]}>
       <View style={styles.audioCard}>
         <IconButton
           icon={status.playing ? 'pause' : 'play'}
@@ -208,18 +179,15 @@ const AudioPreview = ({
         </View>
       </View>
       {!ready ? <LoadingOverlay /> : null}
-    </DismissibleViewer>
+    </View>
   )
 }
 
-const TextPreview = ({ source, onDismiss }: { source: StreamSource; onDismiss: () => void }) => {
+const TextPreview = ({ source }: { source: StreamSource }) => {
   const theme = useTheme()
   const [content, setContent] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [truncated, setTruncated] = useState(false)
-  // Drag-down dismiss is only safe when the user is at the top of the
-  // scroll, otherwise it competes with ScrollView's vertical drag.
-  const [atTop, setAtTop] = useState(true)
   useEffect(() => {
     let cancelled = false
     void (async () => {
@@ -248,22 +216,16 @@ const TextPreview = ({ source, onDismiss }: { source: StreamSource; onDismiss: (
   if (error) return <ErrorOverlay message={error} />
   if (content === null) return <LoadingOverlay />
   return (
-    <DismissibleViewer onDismiss={onDismiss} enabled={atTop} style={styles.viewerContainer}>
-      <ScrollView
-        style={[styles.textScroll, { backgroundColor: theme.colors.background }]}
-        onScroll={e => setAtTop(e.nativeEvent.contentOffset.y <= 0)}
-        scrollEventThrottle={32}
-      >
-        <Text style={[styles.text, { color: theme.colors.onBackground }]} selectable>
-          {content}
+    <ScrollView style={[styles.textScroll, { backgroundColor: theme.colors.background }]}>
+      <Text style={[styles.text, { color: theme.colors.onBackground }]} selectable>
+        {content}
+      </Text>
+      {truncated ? (
+        <Text style={[styles.textTruncated, { color: theme.colors.onSurfaceVariant }]}>
+          … (truncated)
         </Text>
-        {truncated ? (
-          <Text style={[styles.textTruncated, { color: theme.colors.onSurfaceVariant }]}>
-            … (truncated)
-          </Text>
-        ) : null}
-      </ScrollView>
-    </DismissibleViewer>
+      ) : null}
+    </ScrollView>
   )
 }
 
@@ -338,38 +300,15 @@ export default function PreviewScreen() {
     if (!source) return <LoadingState />
     switch (kind) {
       case 'pdf':
-        return (
-          <PdfPreview
-            source={source}
-            thumbnailUrl={thumbnailUrl}
-            onDismiss={() => router.back()}
-          />
-        )
+        return <PdfPreview source={source} thumbnailUrl={thumbnailUrl} />
       case 'image':
-        return (
-          <ImagePreview
-            source={source}
-            thumbnailUrl={thumbnailUrl}
-            onDismiss={() => router.back()}
-          />
-        )
+        return <ImagePreview source={source} thumbnailUrl={thumbnailUrl} />
       case 'video':
-        return (
-          <VideoPreview
-            source={source}
-            onDismiss={() => router.back()}
-          />
-        )
+        return <VideoPreview source={source} />
       case 'audio':
-        return (
-          <AudioPreview
-            source={source}
-            name={file?.name ?? ''}
-            onDismiss={() => router.back()}
-          />
-        )
+        return <AudioPreview source={source} name={file?.name ?? ''} />
       case 'text':
-        return <TextPreview source={source} onDismiss={() => router.back()} />
+        return <TextPreview source={source} />
       case 'unsupported':
       default:
         return externalError ? (
@@ -389,19 +328,12 @@ export default function PreviewScreen() {
   }
 
   // No AppBar for kinds whose content is more visual than informational.
+  // The iOS pageSheet grabber already indicates dismissibility, so we
+  // can stay chromeless on these kinds.
   const isChromeless = kind === 'image' || kind === 'video' || kind === 'pdf'
-  // Every supported kind gets a transparent container so the drag-down
-  // dismiss reveals the previous screen via the DismissibleViewer's
-  // backdrop fade. Only the 'unsupported' fallback panel needs black.
-  const isTransparent = kind !== 'unsupported'
 
   return (
-    <View
-      style={[
-        styles.container,
-        isTransparent && styles.containerTransparent
-      ]}
-    >
+    <View style={styles.container}>
       {!isChromeless ? <AppBar title={title} onBack={() => router.back()} /> : null}
       {isLoadingFile ? <LoadingState /> : renderViewer()}
       {externalError ? (
@@ -417,7 +349,6 @@ const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window')
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#000' },
-  containerTransparent: { backgroundColor: 'transparent' },
   viewerContainer: { flex: 1 },
   pdf: { flex: 1, width: SCREEN_WIDTH, backgroundColor: '#000' },
   transparent: { backgroundColor: 'transparent' },
