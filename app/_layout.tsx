@@ -42,11 +42,12 @@ const InnerLayout = () => {
                   <Stack.Screen
                     name="preview/[fileId]"
                     options={{
-                      presentation: 'transparentModal',
-                      animation: 'fade',
-                      // Underlying screen stays mounted + visible so the
-                      // drag-to-dismiss can reveal it.
-                      contentStyle: { backgroundColor: 'transparent' }
+                      // Native iOS pageSheet: rounded-corner modal that
+                      // the OS lets the user drag down to dismiss,
+                      // coordinated with any inner UIScrollView (PDF,
+                      // text). Works for every preview kind for free.
+                      presentation: 'pageSheet',
+                      animation: 'slide_from_bottom'
                     }}
                   />
                 </Stack>
