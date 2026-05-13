@@ -42,7 +42,8 @@
       "downloading": "Téléchargement…",
       "share": "Partager",
       "rename": "Renommer",
-      "delete": "Supprimer"
+      "delete": "Supprimer",
+      "info": "Détails"
     },
     "delete": {
       "confirmFileTitle": "Supprimer le fichier ?",

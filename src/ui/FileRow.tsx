@@ -39,6 +39,8 @@ interface Props {
   onRestore?: (file: FileItem) => void
   onDelete?: (file: FileItem) => void
   onTogglePin?: (file: FileItem) => void
+  /** Opens the metadata/details sheet for this row. */
+  onInfo?: (file: FileItem) => void
 }
 
 export const FileRow = ({
@@ -50,7 +52,8 @@ export const FileRow = ({
   onRename,
   onRestore,
   onDelete,
-  onTogglePin
+  onTogglePin,
+  onInfo
 }: Props) => {
   const { t } = useTranslation()
   const theme = useTheme()
@@ -68,7 +71,9 @@ export const FileRow = ({
       : undefined
   const description = offlineDescription ?? (date ? `${size} · ${date}` : size)
   const sharingStatus = useFileSharingStatus(file._id)
-  const hasMenu = (!!onShare || !!onRename || !!onRestore || !!onDelete || !!onTogglePin) && !selected
+  const hasMenu =
+    (!!onShare || !!onRename || !!onRestore || !!onDelete || !!onTogglePin || !!onInfo) &&
+    !selected
 
   return (
     <List.Item
@@ -159,6 +164,16 @@ export const FileRow = ({
                 onPress={() => {
                   setMenuVisible(false)
                   onDelete(file)
+                }}
+              />
+            ) : null}
+            {onInfo ? (
+              <Menu.Item
+                leadingIcon="information-outline"
+                title={t('drive.fileMeta.info')}
+                onPress={() => {
+                  setMenuVisible(false)
+                  onInfo(file)
                 }}
               />
             ) : null}

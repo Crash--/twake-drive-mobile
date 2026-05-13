@@ -25,6 +25,7 @@ import { FileQueryResult } from '@/client/queries'
 import { useOfflineActions } from '@/offline/useOfflineActions'
 import { OfflineFilesStore } from '@/offline/OfflineFilesStore'
 import { BigFolderConfirmDialog } from '@/offline/BigFolderConfirmDialog'
+import { openFileFromList } from '@/files/openFromList'
 
 interface DriveChild {
   _id: string
@@ -216,14 +217,21 @@ export default function SharedDrivesScreen() {
     return (
       <FileRow
         file={{ ...(item as unknown as FileQueryResult), size: item.size ?? null }}
-        onPress={file =>
+        onPress={file => {
+          if (!client) return
+          void openFileFromList(client, router, file).catch(e => {
+            console.error('[SharedDrives] openFileFromList failed', e)
+            setResolveError((e as Error).message ?? t('drive.preview.loadFailed'))
+          })
+        }}
+        onTogglePin={onToggleFilePin}
+        onInfo={file =>
           sheetRef.current?.present({
             ...file,
             cozyMetadata: item.cozyMetadata,
             path: item.path
           })
         }
-        onTogglePin={onToggleFilePin}
       />
     )
   }

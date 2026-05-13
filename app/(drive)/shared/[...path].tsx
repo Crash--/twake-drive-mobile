@@ -1,7 +1,8 @@
 import React, { useCallback, useRef, useState } from 'react'
 import { FlatList, RefreshControl, StyleSheet, View } from 'react-native'
+import { Snackbar } from 'react-native-paper'
 import { useLocalSearchParams, useRouter } from 'expo-router'
-import { useQuery } from 'cozy-client'
+import { useClient, useQuery } from 'cozy-client'
 import { useTranslation } from 'react-i18next'
 
 import { AppBar } from '@/ui/AppBar'
@@ -29,6 +30,7 @@ import { useSharedFileIds } from '@/client/useSharedFiles'
 import { useOfflineActions } from '@/offline/useOfflineActions'
 import { OfflineFilesStore } from '@/offline/OfflineFilesStore'
 import { BigFolderConfirmDialog } from '@/offline/BigFolderConfirmDialog'
+import { openFileFromList } from '@/files/openFromList'
 
 export default function SharedScreen() {
   const router = useRouter()
@@ -47,6 +49,8 @@ export default function SharedScreen() {
   const sheetRef = useRef<FileMetadataSheetHandle>(null)
   const shareRef = useRef<ShareSheetHandle>(null)
   const [refreshing, setRefreshing] = useState(false)
+  const [snackbar, setSnackbar] = useState<string | null>(null)
+  const client = useClient()
   const offlineActions = useOfflineActions()
   const onToggleFilePin = (file: { _id: string; name: string; size?: number | null }): void => {
     const entry = OfflineFilesStore.get(file._id)
@@ -123,16 +127,23 @@ export default function SharedScreen() {
       <FileRow
         file={{ ...item, size: item.size ?? null }}
         onPress={file => {
-          sheetRef.current?.present({
-            ...file,
-            cozyMetadata: item.cozyMetadata,
-            path: item.path
+          if (!client) return
+          void openFileFromList(client, router, file).catch(e => {
+            console.error('[SharedScreen] openFileFromList failed', e)
+            setSnackbar((e as Error).message ?? t('drive.preview.loadFailed'))
           })
         }}
         onShare={file =>
           shareRef.current?.present({ _id: file._id, name: file.name, type: 'file' })
         }
         onTogglePin={onToggleFilePin}
+        onInfo={file =>
+          sheetRef.current?.present({
+            ...file,
+            cozyMetadata: item.cozyMetadata,
+            path: item.path
+          })
+        }
       />
     )
   }
@@ -216,6 +227,9 @@ export default function SharedScreen() {
         onConfirm={() => void offlineActions.confirmPending()}
         onCancel={offlineActions.cancelPending}
       />
+      <Snackbar visible={!!snackbar} onDismiss={() => setSnackbar(null)} duration={3000}>
+        {snackbar ?? ''}
+      </Snackbar>
     </View>
   )
 }

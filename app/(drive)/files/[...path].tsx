@@ -25,6 +25,7 @@ import { createCozyNote } from '@/files/createCozyNote'
 import { createOfficeFile, OfficeFileClass } from '@/files/createOfficeFile'
 import { softDeleteEntry } from '@/files/deleteFile'
 import { renameEntry } from '@/files/renameEntry'
+import { openFileFromList } from '@/files/openFromList'
 import { useFlag } from '@/client/useFlag'
 import { useIsOnline } from '@/network/useIsOnline'
 import { requireOnline } from '@/network/requireOnline'
@@ -263,10 +264,10 @@ export default function FilesScreen() {
             selection.toggle(file._id)
             return
           }
-          sheetRef.current?.present({
-            ...file,
-            cozyMetadata: item.cozyMetadata,
-            path: item.path
+          if (!client) return
+          void openFileFromList(client, router, file).catch(e => {
+            console.error('[FilesScreen] openFileFromList failed', e)
+            setSnackbar((e as Error).message ?? t('drive.preview.loadFailed'))
           })
         }}
         onLongPress={file => selection.select(file._id)}
@@ -285,6 +286,16 @@ export default function FilesScreen() {
         onRename={selection.isSelecting ? undefined : () => requestRename(item)}
         onDelete={selection.isSelecting ? undefined : () => requestDelete(item)}
         onTogglePin={selection.isSelecting ? undefined : onToggleFilePin}
+        onInfo={
+          selection.isSelecting
+            ? undefined
+            : file =>
+                sheetRef.current?.present({
+                  ...file,
+                  cozyMetadata: item.cozyMetadata,
+                  path: item.path
+                })
+        }
       />
     )
   }
