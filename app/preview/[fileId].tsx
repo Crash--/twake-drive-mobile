@@ -8,8 +8,8 @@ import { useTranslation } from 'react-i18next'
 import { Image } from 'expo-image'
 import Pdf from 'react-native-pdf'
 import { VideoView, useVideoPlayer } from 'expo-video'
-import { useAudioPlayer, useAudioPlayerStatus } from 'expo-audio'
-import { ActivityIndicator, Button, IconButton, ProgressBar, useTheme } from 'react-native-paper'
+import { AudioModule, useAudioPlayer, useAudioPlayerStatus } from 'expo-audio'
+import { ActivityIndicator, IconButton, ProgressBar, useTheme } from 'react-native-paper'
 
 import { AppBar } from '@/ui/AppBar'
 import { ErrorState } from '@/ui/ErrorState'
@@ -123,6 +123,7 @@ const ImagePreview = ({
 const VideoPreview = ({ source }: { source: StreamSource }) => {
   const player = useVideoPlayer({ uri: source.uri, headers: source.headers }, p => {
     p.loop = false
+    p.staysActiveInBackground = true
     p.play()
   })
   const [ready, setReady] = useState(false)
@@ -134,7 +135,15 @@ const VideoPreview = ({ source }: { source: StreamSource }) => {
   }, [player])
   return (
     <View style={styles.viewerContainer}>
-      <VideoView player={player} style={styles.video} contentFit="contain" allowsFullscreen nativeControls />
+      <VideoView
+        player={player}
+        style={styles.video}
+        contentFit="contain"
+        allowsFullscreen
+        allowsPictureInPicture
+        startsPictureInPictureAutomatically
+        nativeControls
+      />
       {!ready ? <LoadingOverlay /> : null}
     </View>
   )
@@ -143,6 +152,16 @@ const VideoPreview = ({ source }: { source: StreamSource }) => {
 const AudioPreview = ({ source, name }: { source: StreamSource; name: string }) => {
   const player = useAudioPlayer({ uri: source.uri, headers: source.headers })
   const status = useAudioPlayerStatus(player)
+  // Keep audio playing when the app is backgrounded or the device is silenced.
+  // iOS additionally requires UIBackgroundModes: audio in Info.plist; without
+  // it the OS still suspends on background. Note as v2.
+  useEffect(() => {
+    void AudioModule.setAudioModeAsync({
+      playsInSilentMode: true,
+      shouldPlayInBackground: true,
+      shouldRouteThroughEarpiece: false
+    })
+  }, [])
   const ready = status.isLoaded
   const duration = ready ? status.duration : 0
   const position = ready ? status.currentTime : 0
@@ -233,7 +252,6 @@ export default function PreviewScreen() {
   const client = useClient()
   const insets = useSafeAreaInsets()
   const { fileId } = useLocalSearchParams<{ fileId: string }>()
-  const [externalLoading, setExternalLoading] = useState(false)
   const [externalError, setExternalError] = useState<string | null>(null)
   const [uiVisible, setUiVisible] = useState(false)
   const sheetRef = useRef<FileMetadataSheetHandle>(null)
@@ -293,15 +311,11 @@ export default function PreviewScreen() {
 
   const onOpenExternally = async (): Promise<void> => {
     if (!client || !file) return
-    setExternalLoading(true)
-    setExternalError(null)
     try {
       await openFileNatively(client, { _id: file._id, name: file.name, mime: file.mime })
     } catch (e) {
       console.error('[PreviewScreen] open externally failed', e)
       setExternalError((e as Error).message ?? t('drive.preview.loadFailed'))
-    } finally {
-      setExternalLoading(false)
     }
   }
 
@@ -388,21 +402,12 @@ export default function PreviewScreen() {
     >
       {!isImage ? <AppBar title={title} onBack={() => router.back()} /> : null}
       {isLoadingFile ? <LoadingState /> : renderViewer()}
-      {kind !== 'unsupported' && file && !isImage ? (
-        <View style={styles.actions}>
-          <Button
-            mode="text"
-            icon="open-in-new"
-            loading={externalLoading}
-            disabled={externalLoading}
-            onPress={onOpenExternally}
-          >
-            {t('drive.preview.openExternally')}
-          </Button>
-          {externalError ? <Text style={styles.actionError}>{externalError}</Text> : null}
-        </View>
+      {externalError ? (
+        <Text style={[styles.actionError, !isImage && styles.actionErrorChromed]}>
+          {externalError}
+        </Text>
       ) : null}
-      {showImageBar ? (
+      {(showImageBar || (!isImage && kind !== 'unsupported' && file)) ? (
         <View
           style={[
             styles.imageBottomBar,
@@ -423,6 +428,10 @@ export default function PreviewScreen() {
             <Text style={styles.imageBottomLabel}>
               {t(isPinned ? 'drive.offline.unpin' : 'drive.offline.pin')}
             </Text>
+          </Pressable>
+          <Pressable style={styles.imageBottomAction} onPress={() => void onOpenExternally()}>
+            <Icon name="open-in-new" size={24} color="#fff" />
+            <Text style={styles.imageBottomLabel}>{t('drive.preview.openExternally')}</Text>
           </Pressable>
           <Pressable style={styles.imageBottomAction} onPress={openInfo}>
             <Icon name="information-outline" size={24} color="#fff" />
@@ -456,8 +465,8 @@ const styles = StyleSheet.create({
   text: { fontFamily: 'Menlo', fontSize: 13, lineHeight: 18 },
   textTruncated: { fontStyle: 'italic', marginTop: 16, textAlign: 'center' },
   fallbackPanel: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  actions: { paddingVertical: 8, paddingHorizontal: 16, backgroundColor: '#000' },
   actionError: { color: '#ff6b6b', textAlign: 'center', marginTop: 4, fontSize: 12 },
+  actionErrorChromed: { backgroundColor: '#000', paddingVertical: 8 },
   imageBottomBar: {
     position: 'absolute',
     left: 0,
@@ -468,7 +477,7 @@ const styles = StyleSheet.create({
     paddingTop: 12,
     backgroundColor: 'rgba(0,0,0,0.65)'
   },
-  imageBottomAction: { alignItems: 'center', gap: 4, paddingHorizontal: 16, paddingVertical: 6 },
+  imageBottomAction: { alignItems: 'center', gap: 4, paddingHorizontal: 8, paddingVertical: 6 },
   imageBottomLabel: { color: '#fff', fontSize: 11 },
   overlay: {
     ...StyleSheet.absoluteFillObject,
