@@ -364,6 +364,11 @@ export default function PreviewScreen() {
   // translucent bottom bar with Share / Pin / Details. Other kinds keep
   // their header + footer.
   const isImage = kind === 'image'
+  // Chromeless = no AppBar at top, transparent container so the modal
+  // dismiss reveals the previous screen. Image gets a tap-toggleable
+  // bottom bar (since there's no other chrome); video keeps the bar
+  // always visible alongside the native player controls.
+  const isChromeless = kind === 'image' || kind === 'video'
   const isPinned = !!offlineEntry?.isDirectPin
   const showImageBar = isImage && uiVisible && !!file
 
@@ -397,13 +402,13 @@ export default function PreviewScreen() {
     <View
       style={[
         styles.container,
-        isImage && styles.containerTransparent
+        isChromeless && styles.containerTransparent
       ]}
     >
-      {!isImage ? <AppBar title={title} onBack={() => router.back()} /> : null}
+      {!isChromeless ? <AppBar title={title} onBack={() => router.back()} /> : null}
       {isLoadingFile ? <LoadingState /> : renderViewer()}
       {externalError ? (
-        <Text style={[styles.actionError, !isImage && styles.actionErrorChromed]}>
+        <Text style={[styles.actionError, !isChromeless && styles.actionErrorChromed]}>
           {externalError}
         </Text>
       ) : null}
