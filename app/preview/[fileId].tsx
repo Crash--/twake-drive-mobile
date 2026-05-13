@@ -1,7 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react'
-import { Dimensions, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
-import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import Icon from 'react-native-vector-icons/MaterialCommunityIcons'
+import { Dimensions, ScrollView, StyleSheet, Text, View } from 'react-native'
 import { useLocalSearchParams, useRouter } from 'expo-router'
 import { useClient, useQuery } from 'cozy-client'
 import { useTranslation } from 'react-i18next'
@@ -25,10 +23,7 @@ import { openFileNatively } from '@/files/openFile'
 import { OfflineFilesStore } from '@/offline/OfflineFilesStore'
 import { FileSystemRepo } from '@/offline/FileSystemRepo'
 import { useOfflineState } from '@/offline/useOfflineState'
-import { useOfflineActions } from '@/offline/useOfflineActions'
 import { ZoomableImage } from '@/ui/ZoomableImage'
-import { FileMetadataSheet, FileMetadataSheetHandle } from '@/ui/FileMetadataSheet'
-import { ShareSheet, ShareSheetHandle } from '@/ui/ShareSheet'
 
 const TEXT_MAX_BYTES = 1_000_000
 
@@ -74,6 +69,9 @@ const PdfPreview = ({
       <Pdf
         source={{ uri: source.uri, headers: source.headers, cache: true }}
         trustAllCerts={false}
+        enableDoubleTapZoom
+        minScale={1}
+        maxScale={3}
         style={[styles.pdf, !loaded && styles.transparent]}
         onLoadProgress={p => setProgress(p)}
         onLoadComplete={() => setLoaded(true)}
@@ -89,14 +87,10 @@ const PdfPreview = ({
 
 const ImagePreview = ({
   source,
-  thumbnailUrl,
-  onSingleTap,
-  onDismiss
+  thumbnailUrl
 }: {
   source: StreamSource
   thumbnailUrl: string | null
-  onSingleTap: () => void
-  onDismiss: () => void
 }) => {
   const [loaded, setLoaded] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -106,8 +100,6 @@ const ImagePreview = ({
         uri={source.uri}
         headers={source.headers}
         placeholderUri={thumbnailUrl}
-        onSingleTap={onSingleTap}
-        onDismiss={onDismiss}
         onLoad={() => setLoaded(true)}
         onError={err => {
           console.error('[PreviewScreen] image error', err)
@@ -250,14 +242,9 @@ export default function PreviewScreen() {
   const router = useRouter()
   const { t } = useTranslation()
   const client = useClient()
-  const insets = useSafeAreaInsets()
   const { fileId } = useLocalSearchParams<{ fileId: string }>()
   const [externalError, setExternalError] = useState<string | null>(null)
-  const [uiVisible, setUiVisible] = useState(false)
-  const sheetRef = useRef<FileMetadataSheetHandle>(null)
-  const shareRef = useRef<ShareSheetHandle>(null)
   const fallbackTriggered = useRef(false)
-  const offlineActions = useOfflineActions()
 
   const fileLookup = useQuery(fileByIdQuery(fileId ?? ''), {
     as: fileByIdQueryAs(fileId ?? ''),
@@ -309,16 +296,6 @@ export default function PreviewScreen() {
     })()
   }, [client, file, kind, router, t])
 
-  const onOpenExternally = async (): Promise<void> => {
-    if (!client || !file) return
-    try {
-      await openFileNatively(client, { _id: file._id, name: file.name, mime: file.mime })
-    } catch (e) {
-      console.error('[PreviewScreen] open externally failed', e)
-      setExternalError((e as Error).message ?? t('drive.preview.loadFailed'))
-    }
-  }
-
   const isLoadingFile = fileLookup.fetchStatus === 'loading' || (!file && !fileLookup.data)
   const title = file?.name ?? t('drive.preview.title')
 
@@ -328,14 +305,7 @@ export default function PreviewScreen() {
       case 'pdf':
         return <PdfPreview source={source} thumbnailUrl={thumbnailUrl} />
       case 'image':
-        return (
-          <ImagePreview
-            source={source}
-            thumbnailUrl={thumbnailUrl}
-            onSingleTap={() => setUiVisible(v => !v)}
-            onDismiss={() => router.back()}
-          />
-        )
+        return <ImagePreview source={source} thumbnailUrl={thumbnailUrl} />
       case 'video':
         return <VideoPreview source={source} />
       case 'audio':
@@ -360,51 +330,13 @@ export default function PreviewScreen() {
     }
   }
 
-  // Image viewer is fullscreen, no chrome by default; tap reveals a
-  // translucent bottom bar with Share / Pin / Details. Other kinds keep
-  // their header + footer.
-  const isImage = kind === 'image'
-  // Chromeless = no AppBar at top, transparent container so the modal
-  // dismiss reveals the previous screen. Image gets a tap-toggleable
-  // bottom bar (since there's no other chrome); video keeps the bar
-  // always visible alongside the native player controls.
-  const isChromeless = kind === 'image' || kind === 'video'
-  const isPinned = !!offlineEntry?.isDirectPin
-  const showImageBar = isImage && uiVisible && !!file
-
-  const togglePin = (): void => {
-    if (!file) return
-    if (isPinned) void offlineActions.unpin(file._id)
-    else offlineActions.pin({ _id: file._id, name: file.name, size: file.size ?? null })
-  }
-  const openInfo = (): void => {
-    if (!file) return
-    sheetRef.current?.present({
-      _id: file._id,
-      name: file.name,
-      size: file.size ?? null,
-      mime: file.mime,
-      class: file.class,
-      type: file.type,
-      updated_at: file.updated_at,
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      path: (file as any).path,
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      cozyMetadata: (file as any).cozyMetadata
-    })
-  }
-  const openShare = (): void => {
-    if (!file) return
-    shareRef.current?.present({ _id: file._id, name: file.name, type: 'file' })
-  }
+  // No AppBar for kinds whose content is more visual than informational.
+  // The iOS pageSheet grabber already indicates dismissibility, so we
+  // can stay chromeless on these kinds.
+  const isChromeless = kind === 'image' || kind === 'video' || kind === 'pdf'
 
   return (
-    <View
-      style={[
-        styles.container,
-        isChromeless && styles.containerTransparent
-      ]}
-    >
+    <View style={styles.container}>
       {!isChromeless ? <AppBar title={title} onBack={() => router.back()} /> : null}
       {isLoadingFile ? <LoadingState /> : renderViewer()}
       {externalError ? (
@@ -412,40 +344,6 @@ export default function PreviewScreen() {
           {externalError}
         </Text>
       ) : null}
-      {(showImageBar || (!isImage && kind !== 'unsupported' && file)) ? (
-        <View
-          style={[
-            styles.imageBottomBar,
-            { paddingBottom: Math.max(insets.bottom, 12) }
-          ]}
-          pointerEvents="box-none"
-        >
-          <Pressable style={styles.imageBottomAction} onPress={openShare}>
-            <Icon name="share-variant" size={24} color="#fff" />
-            <Text style={styles.imageBottomLabel}>{t('drive.fileMeta.share')}</Text>
-          </Pressable>
-          <Pressable style={styles.imageBottomAction} onPress={togglePin}>
-            <Icon
-              name={isPinned ? 'cloud-off-outline' : 'cloud-download-outline'}
-              size={24}
-              color="#fff"
-            />
-            <Text style={styles.imageBottomLabel}>
-              {t(isPinned ? 'drive.offline.unpin' : 'drive.offline.pin')}
-            </Text>
-          </Pressable>
-          <Pressable style={styles.imageBottomAction} onPress={() => void onOpenExternally()}>
-            <Icon name="open-in-new" size={24} color="#fff" />
-            <Text style={styles.imageBottomLabel}>{t('drive.preview.openExternally')}</Text>
-          </Pressable>
-          <Pressable style={styles.imageBottomAction} onPress={openInfo}>
-            <Icon name="information-outline" size={24} color="#fff" />
-            <Text style={styles.imageBottomLabel}>{t('drive.fileMeta.info')}</Text>
-          </Pressable>
-        </View>
-      ) : null}
-      <FileMetadataSheet ref={sheetRef} />
-      <ShareSheet ref={shareRef} />
     </View>
   )
 }
@@ -454,7 +352,6 @@ const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window')
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#000' },
-  containerTransparent: { backgroundColor: 'transparent' },
   viewerContainer: { flex: 1 },
   pdf: { flex: 1, width: SCREEN_WIDTH, backgroundColor: '#000' },
   transparent: { backgroundColor: 'transparent' },
@@ -472,18 +369,6 @@ const styles = StyleSheet.create({
   fallbackPanel: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   actionError: { color: '#ff6b6b', textAlign: 'center', marginTop: 4, fontSize: 12 },
   actionErrorChromed: { backgroundColor: '#000', paddingVertical: 8 },
-  imageBottomBar: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    bottom: 0,
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    paddingTop: 12,
-    backgroundColor: 'rgba(0,0,0,0.65)'
-  },
-  imageBottomAction: { alignItems: 'center', gap: 4, paddingHorizontal: 8, paddingVertical: 6 },
-  imageBottomLabel: { color: '#fff', fontSize: 11 },
   overlay: {
     ...StyleSheet.absoluteFillObject,
     alignItems: 'center',
