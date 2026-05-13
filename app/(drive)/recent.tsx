@@ -19,6 +19,7 @@ import { getErrorMessageKey } from '@/utils/errorMessages'
 import { recentQuery, recentQueryAs, FileQueryResult } from '@/client/queries'
 import { softDeleteEntry } from '@/files/deleteFile'
 import { renameEntry } from '@/files/renameEntry'
+import { openFileFromList } from '@/files/openFromList'
 import { useIsOnline } from '@/network/useIsOnline'
 import { requireOnline } from '@/network/requireOnline'
 import { useOfflineActions } from '@/offline/useOfflineActions'
@@ -79,7 +80,11 @@ export default function RecentScreen() {
     <FileRow
       file={{ ...item, size: item.size ?? null }}
       onPress={file => {
-        sheetRef.current?.present({ ...file, cozyMetadata: item.cozyMetadata, path: item.path })
+        if (!client) return
+        void openFileFromList(client, router, file).catch(e => {
+          console.error('[RecentScreen] openFileFromList failed', e)
+          setSnackbar((e as Error).message ?? t('drive.preview.loadFailed'))
+        })
       }}
       onShare={file => {
         if (!requireOnline(isOnline, setSnackbar, t)) return
@@ -88,6 +93,9 @@ export default function RecentScreen() {
       onRename={() => setPendingRename(item)}
       onDelete={() => setPendingDelete(item)}
       onTogglePin={onToggleFilePin}
+      onInfo={file =>
+        sheetRef.current?.present({ ...file, cozyMetadata: item.cozyMetadata, path: item.path })
+      }
     />
   )
 

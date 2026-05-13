@@ -42,7 +42,8 @@
       "downloading": "Downloading…",
       "share": "Share",
       "rename": "Rename",
-      "delete": "Delete"
+      "delete": "Delete",
+      "info": "Details"
     },
     "delete": {
       "confirmFileTitle": "Delete file?",
