@@ -1,7 +1,7 @@
 import React, { useCallback, useRef, useState } from 'react'
 import { FlatList, RefreshControl, StyleSheet, View } from 'react-native'
 import { FAB, Snackbar } from 'react-native-paper'
-import { useLocalSearchParams, useRouter } from 'expo-router'
+import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router'
 import { useClient, useQuery } from 'cozy-client'
 import { useTranslation } from 'react-i18next'
 
@@ -12,7 +12,6 @@ import { ErrorState } from '@/ui/ErrorState'
 import { LoadingState } from '@/ui/LoadingState'
 import { FileRow } from '@/ui/FileRow'
 import { FolderRow } from '@/ui/FolderRow'
-import { FileMetadataSheet, FileMetadataSheetHandle } from '@/ui/FileMetadataSheet'
 import { ShareSheet, ShareSheetHandle } from '@/ui/ShareSheet'
 import { CreateFolderDialog } from '@/ui/CreateFolderDialog'
 import { CreateOfficeFileDialog } from '@/ui/CreateOfficeFileDialog'
@@ -59,7 +58,6 @@ export default function FilesScreen() {
         : rawPath
           ? [rawPath]
           : undefined
-  const sheetRef = useRef<FileMetadataSheetHandle>(null)
   const shareRef = useRef<ShareSheetHandle>(null)
   const [refreshing, setRefreshing] = useState(false)
   const [createFolderVisible, setCreateFolderVisible] = useState(false)
@@ -99,6 +97,19 @@ export default function FilesScreen() {
     as: fileByIdQueryAs(currentDirId),
     enabled: !isRoot
   })
+
+  const foldersQueryRef = useRef(foldersQuery)
+  const filesQueryRef = useRef(filesQuery)
+  foldersQueryRef.current = foldersQuery
+  filesQueryRef.current = filesQuery
+
+  useFocusEffect(
+    useCallback(() => {
+      void foldersQueryRef.current.fetch()
+      void filesQueryRef.current.fetch()
+    }, [currentDirId])
+  )
+
   const lookupData = currentDirLookup.data
   const lookupDoc = Array.isArray(lookupData) ? lookupData[0] : lookupData
   const currentDirName = isRoot
@@ -290,12 +301,7 @@ export default function FilesScreen() {
         onInfo={
           selection.isSelecting
             ? undefined
-            : file =>
-                sheetRef.current?.present({
-                  ...file,
-                  cozyMetadata: item.cozyMetadata,
-                  path: item.path
-                })
+            : file => router.push(`/metadata/${file._id}`)
         }
       />
     )
@@ -399,21 +405,6 @@ export default function FilesScreen() {
           }}
         />
       )}
-      <FileMetadataSheet
-        ref={sheetRef}
-        onShareRequested={file => {
-          if (!requireOnline(isOnline, setSnackbar, t)) return
-          shareRef.current?.present(file)
-        }}
-        onRenameRequested={file => {
-          const full = data.find(d => d._id === file._id)
-          if (full) requestRename(full)
-        }}
-        onDeleteRequested={file => {
-          const full = data.find(d => d._id === file._id)
-          if (full) requestDelete(full)
-        }}
-      />
       <ShareSheet ref={shareRef} />
       <BigFolderConfirmDialog
         visible={!!offlineActions.pendingConfirmation}
