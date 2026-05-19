@@ -6,6 +6,15 @@ const config = getDefaultConfig(__dirname)
 // Allow bundling OnlyOffice templates as binary assets via require()
 config.resolver.assetExts = [...new Set([...config.resolver.assetExts, 'docx', 'xlsx', 'pptx'])]
 
+// Keep test files out of the runtime bundle: expo-router otherwise picks up
+// app/**/*.test.tsx as routes and crashes on `jest.fn()` at evaluation time.
+const TEST_FILE_RE = /[/\\]app[/\\].*\.test\.(tsx?|jsx?)$/
+config.resolver.blockList = config.resolver.blockList
+  ? Array.isArray(config.resolver.blockList)
+    ? [...config.resolver.blockList, TEST_FILE_RE]
+    : [config.resolver.blockList, TEST_FILE_RE]
+  : TEST_FILE_RE
+
 const stub = path.resolve(__dirname, 'src/utils/emptyModule.js')
 
 const STUBBED = new Set([
