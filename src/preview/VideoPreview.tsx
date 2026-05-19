@@ -54,18 +54,27 @@ export const VideoPreview = ({ fileId, source }: VideoPreviewProps): React.React
           // presented page-sheet view controller — the parent must be
           // dismissed first. The player itself is owned by PiPSession
           // (root-level), so it survives this unmount.
+          console.log('[VideoPreview] PiP start, dismissing modal')
           if (router.canGoBack()) router.back()
         }}
         onPictureInPictureStop={() => {
-          // Always re-push the preview modal on PiP stop, regardless of
-          // whether the user tapped "restore" or "close": expo-video
-          // gives us no reliable signal to differentiate (iOS pauses the
-          // player on both paths just before this fires, so any
-          // player-state heuristic is unreliable). If the user wanted to
-          // close, they can swipe the reopened modal down — that's
-          // milder UX friction than the previous "restore tap kills the
-          // video" bug.
-          router.push(`/preview/${fileId}`)
+          // iOS pauses the player on PiP stop (both restore and close
+          // paths). Resume play before re-presenting so the user lands
+          // back on a playing video. We always re-push the route — see
+          // VideoPreview.tsx history for why differentiating restore vs
+          // close from JS is unreliable.
+          console.log('[VideoPreview] PiP stop', {
+            playing: player.playing,
+            status: player.status,
+            currentTime: player.currentTime
+          })
+          player.play()
+          // Defer one tick: iOS is still tearing down the PiP layer when
+          // didStopPictureInPicture fires. Pushing immediately can race
+          // and leave the new VideoView without frames.
+          setTimeout(() => {
+            router.push(`/preview/${fileId}`)
+          }, 0)
         }}
       />
       {!ready ? (

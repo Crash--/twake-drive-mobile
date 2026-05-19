@@ -66,18 +66,21 @@ describe('VideoPreview', () => {
     expect(mockBack).toHaveBeenCalledTimes(1)
   })
 
-  it('re-pushes the preview route when PiP stops (restore or close)', () => {
+  it('re-pushes the preview route when PiP stops (restore or close)', async () => {
     // We always re-push on stop because expo-video does not let us tell
     // restore vs close apart reliably — see VideoPreview.tsx for the
-    // rationale.
+    // rationale. The push is deferred one tick to let iOS finish its
+    // PiP teardown.
     render(wrap(<VideoPreview fileId="f1" source={{ uri: 'https://x/v.mp4', headers: {} }} />, true))
     captured.onStop!()
+    await new Promise(resolve => setTimeout(resolve, 10))
     expect(mockPush).toHaveBeenCalledWith('/preview/f1')
   })
 
-  it('still re-pushes on PiP stop when the player is paused', () => {
+  it('still re-pushes on PiP stop when the player is paused', async () => {
     render(wrap(<VideoPreview fileId="f1" source={{ uri: 'https://x/v.mp4', headers: {} }} />, false))
     captured.onStop!()
+    await new Promise(resolve => setTimeout(resolve, 10))
     expect(mockPush).toHaveBeenCalledWith('/preview/f1')
   })
 })
