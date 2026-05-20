@@ -39,6 +39,7 @@ interface Props {
   onRestore?: (file: FileItem) => void
   onDelete?: (file: FileItem) => void
   onTogglePin?: (file: FileItem) => void
+  onMove?: (file: FileItem) => void
   /** Opens the metadata/details sheet for this row. */
   onInfo?: (file: FileItem) => void
 }
@@ -53,6 +54,7 @@ export const FileRow = ({
   onRestore,
   onDelete,
   onTogglePin,
+  onMove,
   onInfo
 }: Props) => {
   const { t } = useTranslation()
@@ -72,7 +74,13 @@ export const FileRow = ({
   const description = offlineDescription ?? (date ? `${size} · ${date}` : size)
   const sharingStatus = useFileSharingStatus(file._id)
   const hasMenu =
-    (!!onShare || !!onRename || !!onRestore || !!onDelete || !!onTogglePin || !!onInfo) &&
+    (!!onShare ||
+      !!onRename ||
+      !!onRestore ||
+      !!onDelete ||
+      !!onTogglePin ||
+      !!onMove ||
+      !!onInfo) &&
     !selected
 
   return (
@@ -84,9 +92,7 @@ export const FileRow = ({
       left={props => (
         <View style={[props.style, styles.leftSlot]}>
           {selected ? (
-            <View
-              style={[styles.checkmark, { backgroundColor: theme.colors.primary }]}
-            >
+            <View style={[styles.checkmark, { backgroundColor: theme.colors.primary }]}>
               <List.Icon icon="check" color={theme.colors.onPrimary} />
             </View>
           ) : (
@@ -167,6 +173,17 @@ export const FileRow = ({
                 }}
               />
             ) : null}
+            {onMove ? (
+              <Menu.Item
+                leadingIcon="folder-move-outline"
+                title={t('drive.fileMeta.move')}
+                disabled={!isOnline}
+                onPress={() => {
+                  setMenuVisible(false)
+                  onMove(file)
+                }}
+              />
+            ) : null}
             {onInfo ? (
               <Menu.Item
                 leadingIcon="information-outline"
@@ -182,10 +199,7 @@ export const FileRow = ({
       }
       onPress={() => onPress(file)}
       onLongPress={onLongPress ? () => onLongPress(file) : undefined}
-      style={[
-        styles.row,
-        selected && { backgroundColor: theme.colors.primaryContainer }
-      ]}
+      style={[styles.row, selected && { backgroundColor: theme.colors.primaryContainer }]}
     />
   )
 }

@@ -44,4 +44,17 @@ describe('FileRow', () => {
     render(wrap(<FileRow file={file} onPress={jest.fn()} onTogglePin={jest.fn()} />))
     expect(screen.getByLabelText('file actions')).toBeOnTheScreen()
   })
+
+  it('renders a Move… menu item when onMove is provided', () => {
+    render(wrap(<FileRow file={file} onPress={() => {}} onMove={jest.fn()} />))
+    expect(screen.getByLabelText('file actions')).toBeOnTheScreen()
+  })
+
+  it('calls onMove when the menu item is tapped', () => {
+    const onMove = jest.fn()
+    render(wrap(<FileRow file={file} onPress={() => {}} onMove={onMove} />))
+    fireEvent.press(screen.getByLabelText('file actions'))
+    fireEvent.press(screen.getByText('drive.fileMeta.move'))
+    expect(onMove).toHaveBeenCalledWith(file)
+  })
 })

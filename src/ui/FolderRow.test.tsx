@@ -47,4 +47,17 @@ describe('FolderRow', () => {
     render(wrap(<FolderRow folder={folder} onPress={jest.fn()} onTogglePin={jest.fn()} />))
     expect(screen.getByLabelText('folder actions')).toBeOnTheScreen()
   })
+
+  it('renders a Move… menu item when onMove is provided', () => {
+    render(wrap(<FolderRow folder={folder} onPress={() => {}} onMove={jest.fn()} />))
+    expect(screen.getByLabelText('folder actions')).toBeOnTheScreen()
+  })
+
+  it('calls onMove when the menu item is tapped', () => {
+    const onMove = jest.fn()
+    render(wrap(<FolderRow folder={folder} onPress={() => {}} onMove={onMove} />))
+    fireEvent.press(screen.getByLabelText('folder actions'))
+    fireEvent.press(screen.getByText('drive.fileMeta.move'))
+    expect(onMove).toHaveBeenCalledWith(folder)
+  })
 })
