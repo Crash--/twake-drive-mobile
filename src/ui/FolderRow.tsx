@@ -49,6 +49,7 @@ interface Props {
   onRestore?: (folder: FolderItem) => void
   onDelete?: (folder: FolderItem) => void
   onTogglePin?: (folder: FolderItem) => void
+  onMove?: (folder: FolderItem) => void
 }
 
 export const FolderRow = ({
@@ -60,7 +61,8 @@ export const FolderRow = ({
   onRename,
   onRestore,
   onDelete,
-  onTogglePin
+  onTogglePin,
+  onMove
 }: Props) => {
   const { t } = useTranslation()
   const theme = useTheme()
@@ -69,14 +71,16 @@ export const FolderRow = ({
   const sharingStatus = useFileSharingStatus(folder._id)
   const folderOfflineState = useOfflineFolderState(folder._id)
   const isPinned = folderOfflineState.pinned
-  const hasMenu = (!!onShare || !!onRename || !!onRestore || !!onDelete || !!onTogglePin) && !selected
+  const hasMenu =
+    (!!onShare || !!onRename || !!onRestore || !!onDelete || !!onTogglePin || !!onMove) && !selected
 
-  const description = isPinned && folderOfflineState.downloading > 0
-    ? t('drive.offline.folderPartial', {
-        count: folderOfflineState.downloaded,
-        total: folderOfflineState.total
-      })
-    : undefined
+  const description =
+    isPinned && folderOfflineState.downloading > 0
+      ? t('drive.offline.folderPartial', {
+          count: folderOfflineState.downloaded,
+          total: folderOfflineState.total
+        })
+      : undefined
 
   return (
     <List.Item
@@ -87,9 +91,7 @@ export const FolderRow = ({
       left={props => (
         <View style={[props.style, styles.leftSlot]}>
           {selected ? (
-            <View
-              style={[styles.checkmark, { backgroundColor: theme.colors.primary }]}
-            >
+            <View style={[styles.checkmark, { backgroundColor: theme.colors.primary }]}>
               <List.Icon icon="check" color={theme.colors.onPrimary} />
             </View>
           ) : (
@@ -176,6 +178,17 @@ export const FolderRow = ({
                 }}
               />
             ) : null}
+            {onMove ? (
+              <Menu.Item
+                leadingIcon="folder-move-outline"
+                title={t('drive.fileMeta.move')}
+                disabled={!isOnline}
+                onPress={() => {
+                  setMenuVisible(false)
+                  onMove(folder)
+                }}
+              />
+            ) : null}
           </Menu>
         ) : (
           <List.Icon {...props} icon="chevron-right" />
@@ -183,10 +196,7 @@ export const FolderRow = ({
       }
       onPress={() => onPress(folder)}
       onLongPress={onLongPress ? () => onLongPress(folder) : undefined}
-      style={[
-        styles.row,
-        selected && { backgroundColor: theme.colors.primaryContainer }
-      ]}
+      style={[styles.row, selected && { backgroundColor: theme.colors.primaryContainer }]}
     />
   )
 }
