@@ -1,14 +1,6 @@
-import React, {
-  forwardRef,
-  useCallback,
-  useEffect,
-  useImperativeHandle,
-  useMemo,
-  useRef,
-  useState
-} from 'react'
+import React, { useCallback, useEffect, useMemo, useState } from 'react'
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native'
-import BottomSheet, { BottomSheetView } from '@gorhom/bottom-sheet'
+import { useLocalSearchParams, useRouter } from 'expo-router'
 import {
   ActivityIndicator,
   Button,
@@ -29,10 +21,12 @@ import { useFlag } from '@/client/useFlag'
 import {
   ContactQueryResult,
   reachableContactsQuery,
-  reachableContactsQueryAs
+  reachableContactsQueryAs,
+  fileByIdQuery,
+  fileByIdQueryAs,
+  FileQueryResult
 } from '@/client/queries'
 import { filterContactSuggestions } from '@/files/contactSuggestions'
-
 import {
   LinkEditingRights,
   SharingMember,
@@ -49,20 +43,18 @@ import {
 import { useFileSharing, useRefreshSharings } from '@/sharing/SharingProvider'
 import { useIsOnline } from '@/network/useIsOnline'
 import { requireOnline } from '@/network/requireOnline'
-import { FileThumbnail } from './FileThumbnail'
+import { ScreenContainer } from '@/ui/ScreenContainer'
+import { LoadingState } from '@/ui/LoadingState'
+import { ErrorState } from '@/ui/ErrorState'
+import { FileThumbnail } from '@/ui/FileThumbnail'
 
-export interface ShareSheetFile {
+interface ShareSheetFile {
   _id: string
   name: string
   type?: 'file' | 'directory'
   mime?: string
   class?: string
   links?: { tiny?: string; small?: string; medium?: string; large?: string }
-}
-
-export interface ShareSheetHandle {
-  present: (file: ShareSheetFile) => void
-  dismiss: () => void
 }
 
 const truncateMiddle = (s: string, max = 56): string => {
@@ -72,13 +64,14 @@ const truncateMiddle = (s: string, max = 56): string => {
   return `${s.slice(0, head)}...${s.slice(-tail)}`
 }
 
-export const ShareSheet = forwardRef<ShareSheetHandle>((_, ref) => {
+export default function ShareRoute() {
+  const router = useRouter()
   const theme = useTheme()
   const { t } = useTranslation()
   const client = useClient()
   const refreshSharings = useRefreshSharings()
-  const bottomSheetRef = useRef<BottomSheet>(null)
   const isOnline = useIsOnline()
+  const { fileId } = useLocalSearchParams<{ fileId: string }>()
 
   // Flags mirrored from twake-drive web's ShareFileView / ShareDisplayedFolderView:
   // - sharing.generate-link-button.enabled gates the public link toggle. The web
@@ -92,7 +85,26 @@ export const ShareSheet = forwardRef<ShareSheetHandle>((_, ref) => {
   // TODO: when an advanced-settings panel is added, gate it on this flag too.
   // const autoOpenSettingsEnabled = !!useFlag('sharing.auto-open-settings.enabled')
 
-  const [file, setFile] = useState<ShareSheetFile | null>(null)
+  const fileLookup = useQuery(fileByIdQuery(fileId ?? ''), {
+    as: fileByIdQueryAs(fileId ?? ''),
+    enabled: !!fileId
+  })
+  const lookupData = fileLookup.data
+  const fileFromQuery = (Array.isArray(lookupData) ? lookupData[0] : lookupData) as
+    | FileQueryResult
+    | null
+    | undefined
+  const file: ShareSheetFile | null = fileFromQuery
+    ? {
+        _id: fileFromQuery._id,
+        name: fileFromQuery.name,
+        type: fileFromQuery.type,
+        mime: fileFromQuery.mime,
+        class: fileFromQuery.class,
+        links: fileFromQuery.links
+      }
+    : null
+
   const [mutating, setMutating] = useState(false)
   const [linkMutating, setLinkMutating] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -118,8 +130,7 @@ export const ShareSheet = forwardRef<ShareSheetHandle>((_, ref) => {
   const initialLoading = !contextLoaded && !entry
 
   const stackUri = client?.getStackClient()?.uri as string | undefined
-  const linkUrl =
-    linkPermission && stackUri ? buildPublicLinkUrl(stackUri, linkPermission) : null
+  const linkUrl = linkPermission && stackUri ? buildPublicLinkUrl(stackUri, linkPermission) : null
 
   // Re-sync the segmented control whenever the loaded permission changes:
   // - opening the sheet on a fresh file → resets to 'readOnly'
@@ -130,17 +141,9 @@ export const ShareSheet = forwardRef<ShareSheetHandle>((_, ref) => {
     setEditingRights(getLinkEditingRights(linkPermission))
   }, [linkPermission])
 
-  useImperativeHandle(ref, () => ({
-    present: (f: ShareSheetFile) => {
-      setFile(f)
-      setError(null)
-      setShowAddForm(false)
-      setEmailInput('')
-      setReadOnlyInput(true)
-      bottomSheetRef.current?.expand()
-    },
-    dismiss: () => bottomSheetRef.current?.close()
-  }))
+  const close = useCallback((): void => {
+    if (router.canGoBack()) router.back()
+  }, [router])
 
   const onToggleLink = async (next: boolean): Promise<void> => {
     if (!requireOnline(isOnline, setSnack, t)) return
@@ -156,7 +159,7 @@ export const ShareSheet = forwardRef<ShareSheetHandle>((_, ref) => {
       }
       await refreshSharings()
     } catch (e) {
-      console.error('[ShareSheet] toggle link failed', e)
+      console.error('[ShareRoute] toggle link failed', e)
       setError(t('drive.share.errorMutate'))
     } finally {
       setLinkMutating(false)
@@ -185,7 +188,7 @@ export const ShareSheet = forwardRef<ShareSheetHandle>((_, ref) => {
       await createPublicLink(client, file, next)
       await refreshSharings()
     } catch (e) {
-      console.error('[ShareSheet] swap link rights failed', e)
+      console.error('[ShareRoute] swap link rights failed', e)
       setError(t('drive.share.errorMutate'))
       // Revert the local state since the swap failed; the effect on
       // linkPermission will re-confirm but doing it here avoids a flash.
@@ -202,7 +205,7 @@ export const ShareSheet = forwardRef<ShareSheetHandle>((_, ref) => {
       await Clipboard.setStringAsync(linkUrl)
       setSnack(t('drive.share.linkCopied'))
     } catch (e) {
-      console.error('[ShareSheet] copy failed', e)
+      console.error('[ShareRoute] copy failed', e)
       setError(t('drive.share.errorMutate'))
     }
   }
@@ -223,7 +226,7 @@ export const ShareSheet = forwardRef<ShareSheetHandle>((_, ref) => {
       setShowAddForm(false)
       await refreshSharings()
     } catch (e) {
-      console.error('[ShareSheet] add recipient failed', e)
+      console.error('[ShareRoute] add recipient failed', e)
       setError(t('drive.share.errorMutate'))
     } finally {
       setMutating(false)
@@ -241,7 +244,7 @@ export const ShareSheet = forwardRef<ShareSheetHandle>((_, ref) => {
       await revokeRecipientAtIndex(client, sharing, memberIndex)
       await refreshSharings()
     } catch (e) {
-      console.error('[ShareSheet] revoke recipient failed', e)
+      console.error('[ShareRoute] revoke recipient failed', e)
       setError(t('drive.share.errorMutate'))
     } finally {
       setMutating(false)
@@ -285,253 +288,248 @@ export const ShareSheet = forwardRef<ShareSheetHandle>((_, ref) => {
     }
   }
 
+  if (fileLookup.fetchStatus === 'loading' && !file) {
+    return (
+      <ScreenContainer>
+        <LoadingState />
+      </ScreenContainer>
+    )
+  }
+  if (!file) {
+    return (
+      <ScreenContainer>
+        <ErrorState message={t('drive.preview.loadFailed')} onRetry={() => fileLookup.fetch()} />
+      </ScreenContainer>
+    )
+  }
+
   return (
-    <BottomSheet
-      ref={bottomSheetRef}
-      index={-1}
-      snapPoints={['60%', '90%']}
-      enablePanDownToClose
-      backgroundStyle={{ backgroundColor: theme.colors.surface }}
-      onClose={() => {
-        setSnack(null)
-      }}
-    >
-      <BottomSheetView style={styles.container}>
-        {file ? (
-          <ScrollView contentContainerStyle={styles.scrollContent}>
-            <View style={styles.header}>
-              <FileThumbnail file={file} size={64} />
-              <Text variant="titleMedium" style={styles.name} numberOfLines={2}>
-                {file.name}
-              </Text>
-            </View>
-            <Divider />
+    <ScreenContainer>
+      <ScrollView contentContainerStyle={styles.scrollContent}>
+        <View style={styles.header}>
+          <FileThumbnail file={file} size={64} />
+          <Text variant="titleMedium" style={styles.name} numberOfLines={2}>
+            {file.name}
+          </Text>
+        </View>
+        <Divider />
 
-            {initialLoading ? (
-              <View style={styles.loaderRow}>
-                <ActivityIndicator animating />
-              </View>
-            ) : null}
-
-            {error ? (
-              <View style={styles.errorBox}>
-                <Text style={[styles.errorText, { color: theme.colors.error }]}>{error}</Text>
-                <Button mode="text" onPress={() => refreshSharings()}>
-                  {t('common.retry')}
-                </Button>
-              </View>
-            ) : null}
-
-            {/* Public link section — gated by sharing.generate-link-button.enabled */}
-            {generateLinkEnabled ? (
-              <>
-                <View style={styles.section}>
-                  <View style={styles.sectionHeader}>
-                    <Text variant="titleSmall">{t('drive.share.linkTitle')}</Text>
-                    <View style={styles.linkSwitchSlot}>
-                      {linkMutating ? (
-                        <ActivityIndicator animating />
-                      ) : (
-                        <Switch
-                          value={linkPermission !== null}
-                          onValueChange={onToggleLink}
-                          disabled={initialLoading}
-                        />
-                      )}
-                    </View>
-                  </View>
-                  <View style={styles.editingRightsRow}>
-                    <SegmentedButtons
-                      value={editingRights}
-                      onValueChange={(v) =>
-                        void onChangeEditingRights(v as LinkEditingRights)
-                      }
-                      density="small"
-                      buttons={[
-                        {
-                          value: 'readOnly',
-                          label: t('drive.share.linkRightsReader'),
-                          icon: 'eye-outline',
-                          disabled: linkMutating || initialLoading,
-                          accessibilityLabel: t('drive.share.linkRightsReader')
-                        },
-                        {
-                          value: 'write',
-                          label: t('drive.share.linkRightsEditor'),
-                          icon: 'pencil-outline',
-                          disabled: linkMutating || initialLoading,
-                          accessibilityLabel: t('drive.share.linkRightsEditor')
-                        }
-                      ]}
-                    />
-                  </View>
-                  {linkPermission ? (
-                    <>
-                      <Text variant="bodySmall" style={styles.sectionHint}>
-                        {t('drive.share.linkOn')}
-                      </Text>
-                      <View style={styles.linkRow}>
-                        <Text style={styles.linkText} numberOfLines={1} ellipsizeMode="middle">
-                          {linkUrl ? truncateMiddle(linkUrl) : ''}
-                        </Text>
-                        <IconButton
-                          icon="content-copy"
-                          onPress={() => void onCopyLink()}
-                          disabled={!linkUrl}
-                          accessibilityLabel={t('drive.share.linkCopy')}
-                        />
-                      </View>
-                    </>
-                  ) : null}
-                </View>
-
-                <Divider />
-              </>
-            ) : null}
-
-            {/* Recipients section */}
-            <View style={styles.section}>
-              <Text variant="titleSmall">{t('drive.share.recipientsTitle')}</Text>
-              {recipients.length === 0 ? (
-                <Text variant="bodySmall" style={styles.sectionHint}>
-                  —
-                </Text>
-              ) : (
-                recipients.map((m, idx) => (
-                  <RecipientRow
-                    key={`${m.email ?? m.name ?? 'r'}-${idx}`}
-                    member={m}
-                    statusLabel={statusLabel(m.status)}
-                    disabled={mutating}
-                    onRemove={() => void onRemoveRecipient(idx)}
-                  />
-                ))
-              )}
-
-              {showAddForm ? (
-                <View style={styles.addForm}>
-                  <TextInput
-                    mode="outlined"
-                    label={t('drive.share.emailPlaceholder')}
-                    value={emailInput}
-                    onChangeText={setEmailInput}
-                    autoCapitalize="none"
-                    autoCorrect={false}
-                    keyboardType="email-address"
-                    style={styles.emailInput}
-                  />
-                  {contactsQuery.fetchStatus === 'loading' && contacts.length === 0 ? (
-                    <Text variant="bodySmall" style={styles.suggestionsHint}>
-                      {t('drive.share.suggestionsLoading')}
-                    </Text>
-                  ) : null}
-                  {suggestions.length > 0 ? (
-                    <View
-                      style={[
-                        styles.suggestionsBox,
-                        { borderColor: theme.colors.outlineVariant }
-                      ]}
-                    >
-                      <ScrollView
-                        keyboardShouldPersistTaps="handled"
-                        nestedScrollEnabled
-                        style={styles.suggestionsScroll}
-                      >
-                        {suggestions.map(s => (
-                          <Pressable
-                            key={s._id}
-                            onPress={() => setEmailInput(s.email)}
-                            style={({ pressed }) => [
-                              styles.suggestionRow,
-                              pressed && {
-                                backgroundColor: theme.colors.surfaceVariant
-                              }
-                            ]}
-                            accessibilityRole="button"
-                            accessibilityLabel={`${s.displayName} ${s.email}`}
-                          >
-                            <View
-                              style={[
-                                styles.suggestionAvatar,
-                                { backgroundColor: theme.colors.primaryContainer }
-                              ]}
-                            >
-                              <Text
-                                style={[
-                                  styles.suggestionInitial,
-                                  { color: theme.colors.onPrimaryContainer }
-                                ]}
-                              >
-                                {s.displayName.charAt(0).toUpperCase()}
-                              </Text>
-                            </View>
-                            <View style={styles.suggestionText}>
-                              <Text variant="bodyMedium" numberOfLines={1}>
-                                {s.displayName}
-                              </Text>
-                              <Text
-                                variant="bodySmall"
-                                numberOfLines={1}
-                                style={styles.suggestionEmail}
-                              >
-                                {s.email}
-                              </Text>
-                            </View>
-                          </Pressable>
-                        ))}
-                      </ScrollView>
-                    </View>
-                  ) : null}
-                  <View style={styles.readOnlyRow}>
-                    <Text>{t('drive.share.readOnly')}</Text>
-                    <Switch
-                      value={readOnlyInput}
-                      onValueChange={setReadOnlyInput}
-                      disabled={mutating}
-                    />
-                  </View>
-                  <View style={styles.addButtons}>
-                    <Button
-                      mode="text"
-                      onPress={() => {
-                        setShowAddForm(false)
-                        setEmailInput('')
-                      }}
-                      disabled={mutating}
-                    >
-                      {t('common.cancel')}
-                    </Button>
-                    <Button
-                      mode="contained"
-                      onPress={() => void onSubmitRecipient()}
-                      loading={mutating}
-                      disabled={mutating || !emailInput.trim()}
-                    >
-                      {t('drive.share.send')}
-                    </Button>
-                  </View>
-                </View>
-              ) : (
-                <Button
-                  mode="outlined"
-                  icon="account-plus"
-                  onPress={() => setShowAddForm(true)}
-                  style={styles.addButton}
-                  disabled={initialLoading}
-                >
-                  {t('drive.share.addRecipient')}
-                </Button>
-              )}
-            </View>
-
-            <View style={styles.footer}>
-              <Button mode="outlined" onPress={() => bottomSheetRef.current?.close()}>
-                {t('common.close')}
-              </Button>
-            </View>
-          </ScrollView>
+        {initialLoading ? (
+          <View style={styles.loaderRow}>
+            <ActivityIndicator animating />
+          </View>
         ) : null}
-      </BottomSheetView>
+
+        {error ? (
+          <View style={styles.errorBox}>
+            <Text style={[styles.errorText, { color: theme.colors.error }]}>{error}</Text>
+            <Button mode="text" onPress={() => refreshSharings()}>
+              {t('common.retry')}
+            </Button>
+          </View>
+        ) : null}
+
+        {/* Public link section — gated by sharing.generate-link-button.enabled */}
+        {generateLinkEnabled ? (
+          <>
+            <View style={styles.section}>
+              <View style={styles.sectionHeader}>
+                <Text variant="titleSmall">{t('drive.share.linkTitle')}</Text>
+                <View style={styles.linkSwitchSlot}>
+                  {linkMutating ? (
+                    <ActivityIndicator animating />
+                  ) : (
+                    <Switch
+                      value={linkPermission !== null}
+                      onValueChange={onToggleLink}
+                      disabled={initialLoading}
+                    />
+                  )}
+                </View>
+              </View>
+              <View style={styles.editingRightsRow}>
+                <SegmentedButtons
+                  value={editingRights}
+                  onValueChange={v => void onChangeEditingRights(v as LinkEditingRights)}
+                  density="small"
+                  buttons={[
+                    {
+                      value: 'readOnly',
+                      label: t('drive.share.linkRightsReader'),
+                      icon: 'eye-outline',
+                      disabled: linkMutating || initialLoading,
+                      accessibilityLabel: t('drive.share.linkRightsReader')
+                    },
+                    {
+                      value: 'write',
+                      label: t('drive.share.linkRightsEditor'),
+                      icon: 'pencil-outline',
+                      disabled: linkMutating || initialLoading,
+                      accessibilityLabel: t('drive.share.linkRightsEditor')
+                    }
+                  ]}
+                />
+              </View>
+              {linkPermission ? (
+                <>
+                  <Text variant="bodySmall" style={styles.sectionHint}>
+                    {t('drive.share.linkOn')}
+                  </Text>
+                  <View style={styles.linkRow}>
+                    <Text style={styles.linkText} numberOfLines={1} ellipsizeMode="middle">
+                      {linkUrl ? truncateMiddle(linkUrl) : ''}
+                    </Text>
+                    <IconButton
+                      icon="content-copy"
+                      onPress={() => void onCopyLink()}
+                      disabled={!linkUrl}
+                      accessibilityLabel={t('drive.share.linkCopy')}
+                    />
+                  </View>
+                </>
+              ) : null}
+            </View>
+
+            <Divider />
+          </>
+        ) : null}
+
+        {/* Recipients section */}
+        <View style={styles.section}>
+          <Text variant="titleSmall">{t('drive.share.recipientsTitle')}</Text>
+          {recipients.length === 0 ? (
+            <Text variant="bodySmall" style={styles.sectionHint}>
+              —
+            </Text>
+          ) : (
+            recipients.map((m, idx) => (
+              <RecipientRow
+                key={`${m.email ?? m.name ?? 'r'}-${idx}`}
+                member={m}
+                statusLabel={statusLabel(m.status)}
+                disabled={mutating}
+                onRemove={() => void onRemoveRecipient(idx)}
+              />
+            ))
+          )}
+
+          {showAddForm ? (
+            <View style={styles.addForm}>
+              <TextInput
+                mode="outlined"
+                label={t('drive.share.emailPlaceholder')}
+                value={emailInput}
+                onChangeText={setEmailInput}
+                autoCapitalize="none"
+                autoCorrect={false}
+                keyboardType="email-address"
+                style={styles.emailInput}
+              />
+              {contactsQuery.fetchStatus === 'loading' && contacts.length === 0 ? (
+                <Text variant="bodySmall" style={styles.suggestionsHint}>
+                  {t('drive.share.suggestionsLoading')}
+                </Text>
+              ) : null}
+              {suggestions.length > 0 ? (
+                <View style={[styles.suggestionsBox, { borderColor: theme.colors.outlineVariant }]}>
+                  <ScrollView
+                    keyboardShouldPersistTaps="handled"
+                    nestedScrollEnabled
+                    style={styles.suggestionsScroll}
+                  >
+                    {suggestions.map(s => (
+                      <Pressable
+                        key={s._id}
+                        onPress={() => setEmailInput(s.email)}
+                        style={({ pressed }) => [
+                          styles.suggestionRow,
+                          pressed && {
+                            backgroundColor: theme.colors.surfaceVariant
+                          }
+                        ]}
+                        accessibilityRole="button"
+                        accessibilityLabel={`${s.displayName} ${s.email}`}
+                      >
+                        <View
+                          style={[
+                            styles.suggestionAvatar,
+                            { backgroundColor: theme.colors.primaryContainer }
+                          ]}
+                        >
+                          <Text
+                            style={[
+                              styles.suggestionInitial,
+                              { color: theme.colors.onPrimaryContainer }
+                            ]}
+                          >
+                            {s.displayName.charAt(0).toUpperCase()}
+                          </Text>
+                        </View>
+                        <View style={styles.suggestionText}>
+                          <Text variant="bodyMedium" numberOfLines={1}>
+                            {s.displayName}
+                          </Text>
+                          <Text
+                            variant="bodySmall"
+                            numberOfLines={1}
+                            style={styles.suggestionEmail}
+                          >
+                            {s.email}
+                          </Text>
+                        </View>
+                      </Pressable>
+                    ))}
+                  </ScrollView>
+                </View>
+              ) : null}
+              <View style={styles.readOnlyRow}>
+                <Text>{t('drive.share.readOnly')}</Text>
+                <Switch
+                  value={readOnlyInput}
+                  onValueChange={setReadOnlyInput}
+                  disabled={mutating}
+                />
+              </View>
+              <View style={styles.addButtons}>
+                <Button
+                  mode="text"
+                  onPress={() => {
+                    setShowAddForm(false)
+                    setEmailInput('')
+                  }}
+                  disabled={mutating}
+                >
+                  {t('common.cancel')}
+                </Button>
+                <Button
+                  mode="contained"
+                  onPress={() => void onSubmitRecipient()}
+                  loading={mutating}
+                  disabled={mutating || !emailInput.trim()}
+                >
+                  {t('drive.share.send')}
+                </Button>
+              </View>
+            </View>
+          ) : (
+            <Button
+              mode="outlined"
+              icon="account-plus"
+              onPress={() => setShowAddForm(true)}
+              style={styles.addButton}
+              disabled={initialLoading}
+            >
+              {t('drive.share.addRecipient')}
+            </Button>
+          )}
+        </View>
+
+        <View style={styles.footer}>
+          <Button mode="outlined" onPress={close}>
+            {t('common.close')}
+          </Button>
+        </View>
+      </ScrollView>
       <Snackbar
         visible={snack !== null}
         onDismiss={() => setSnack(null)}
@@ -540,11 +538,9 @@ export const ShareSheet = forwardRef<ShareSheetHandle>((_, ref) => {
       >
         {snack ?? ''}
       </Snackbar>
-    </BottomSheet>
+    </ScreenContainer>
   )
-})
-
-ShareSheet.displayName = 'ShareSheet'
+}
 
 interface RecipientRowProps {
   member: SharingMember
@@ -577,8 +573,7 @@ const RecipientRow = ({ member, statusLabel, disabled, onRemove }: RecipientRowP
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, paddingHorizontal: 16, paddingBottom: 16 },
-  scrollContent: { paddingBottom: 32 },
+  scrollContent: { paddingHorizontal: 16, paddingBottom: 32 },
   header: { alignItems: 'center', paddingVertical: 16, gap: 8 },
   name: { textAlign: 'center' },
   section: { paddingVertical: 12, gap: 8 },

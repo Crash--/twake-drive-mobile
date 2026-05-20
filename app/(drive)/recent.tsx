@@ -1,7 +1,7 @@
-import React, { useRef, useState } from 'react'
+import React, { useCallback, useRef, useState } from 'react'
 import { FlatList, RefreshControl, StyleSheet, View } from 'react-native'
 import { Snackbar } from 'react-native-paper'
-import { useRouter } from 'expo-router'
+import { useFocusEffect, useRouter } from 'expo-router'
 import { useClient, useQuery } from 'cozy-client'
 import { useTranslation } from 'react-i18next'
 
@@ -11,8 +11,6 @@ import { EmptyState } from '@/ui/EmptyState'
 import { ErrorState } from '@/ui/ErrorState'
 import { LoadingState } from '@/ui/LoadingState'
 import { FileRow } from '@/ui/FileRow'
-import { FileMetadataSheet, FileMetadataSheetHandle } from '@/ui/FileMetadataSheet'
-import { ShareSheet, ShareSheetHandle } from '@/ui/ShareSheet'
 import { ConfirmDeleteDialog } from '@/ui/ConfirmDeleteDialog'
 import { RenameDialog } from '@/ui/RenameDialog'
 import { useAuth } from '@/auth/useAuth'
@@ -31,9 +29,17 @@ export default function RecentScreen() {
   const { t } = useTranslation()
   const { logout } = useAuth()
   const client = useClient()
-  const sheetRef = useRef<FileMetadataSheetHandle>(null)
-  const shareRef = useRef<ShareSheetHandle>(null)
   const query = useQuery(recentQuery(), { as: recentQueryAs })
+
+  const queryRef = useRef(query)
+  queryRef.current = query
+
+  useFocusEffect(
+    useCallback(() => {
+      void queryRef.current.fetch()
+    }, [])
+  )
+
   const [pendingDelete, setPendingDelete] = useState<FileQueryResult | null>(null)
   const [pendingRename, setPendingRename] = useState<FileQueryResult | null>(null)
   const [deleting, setDeleting] = useState(false)
@@ -89,14 +95,12 @@ export default function RecentScreen() {
       }}
       onShare={file => {
         if (!requireOnline(isOnline, setSnackbar, t)) return
-        shareRef.current?.present({ _id: file._id, name: file.name, type: 'file' })
+        router.push(`/share/${file._id}`)
       }}
       onRename={() => setPendingRename(item)}
       onDelete={() => setPendingDelete(item)}
       onTogglePin={onToggleFilePin}
-      onInfo={file =>
-        sheetRef.current?.present({ ...file, cozyMetadata: item.cozyMetadata, path: item.path })
-      }
+      onInfo={file => router.push(`/metadata/${file._id}`)}
     />
   )
 
@@ -127,22 +131,6 @@ export default function RecentScreen() {
           }
         />
       )}
-      <FileMetadataSheet
-        ref={sheetRef}
-        onShareRequested={file => {
-          if (!requireOnline(isOnline, setSnackbar, t)) return
-          shareRef.current?.present(file)
-        }}
-        onRenameRequested={file => {
-          const full = data.find(d => d._id === file._id)
-          if (full) setPendingRename(full)
-        }}
-        onDeleteRequested={file => {
-          const full = data.find(d => d._id === file._id)
-          if (full) setPendingDelete(full)
-        }}
-      />
-      <ShareSheet ref={shareRef} />
       <ConfirmDeleteDialog
         visible={!!pendingDelete}
         target={pendingDelete}

@@ -9,6 +9,7 @@ import {
   Text,
   useTheme
 } from 'react-native-paper'
+import { useFocusEffect, useRouter } from 'expo-router'
 import { useQuery } from 'cozy-client'
 import { useClient } from 'cozy-client'
 import { useTranslation } from 'react-i18next'
@@ -20,7 +21,6 @@ import { ErrorState } from '@/ui/ErrorState'
 import { LoadingState } from '@/ui/LoadingState'
 import { FileRow } from '@/ui/FileRow'
 import { FolderRow } from '@/ui/FolderRow'
-import { FileMetadataSheet, FileMetadataSheetHandle } from '@/ui/FileMetadataSheet'
 import { useAuth } from '@/auth/useAuth'
 import { getErrorMessageKey } from '@/utils/errorMessages'
 import {
@@ -35,13 +35,26 @@ import { useIsOnline } from '@/network/useIsOnline'
 import { requireOnline } from '@/network/requireOnline'
 
 export default function TrashScreen() {
+  const router = useRouter()
   const { t } = useTranslation()
   const { logout } = useAuth()
   const client = useClient()
   const theme = useTheme()
-  const sheetRef = useRef<FileMetadataSheetHandle>(null)
   const foldersQuery = useQuery(trashFoldersQuery(), { as: trashFoldersQueryAs })
   const filesQuery = useQuery(trashFilesQuery(), { as: trashFilesQueryAs })
+
+  const foldersQueryRef = useRef(foldersQuery)
+  const filesQueryRef = useRef(filesQuery)
+  foldersQueryRef.current = foldersQuery
+  filesQueryRef.current = filesQuery
+
+  useFocusEffect(
+    useCallback(() => {
+      void foldersQueryRef.current.fetch()
+      void filesQueryRef.current.fetch()
+    }, [])
+  )
+
   const [snackbar, setSnackbar] = useState<string | null>(null)
   const [emptyDialogVisible, setEmptyDialogVisible] = useState(false)
   const [emptying, setEmptying] = useState(false)
@@ -105,13 +118,7 @@ export default function TrashScreen() {
     return (
       <FileRow
         file={{ ...item, size: item.size ?? null }}
-        onPress={file => {
-          sheetRef.current?.present({
-            ...file,
-            cozyMetadata: item.cozyMetadata,
-            path: item.path
-          })
-        }}
+        onPress={file => router.push(`/metadata/${file._id}`)}
         onRestore={() => void handleRestore(item)}
       />
     )
@@ -150,7 +157,6 @@ export default function TrashScreen() {
           }
         />
       )}
-      <FileMetadataSheet ref={sheetRef} />
       {data.length > 0 ? (
         <FAB
           icon="delete-sweep"

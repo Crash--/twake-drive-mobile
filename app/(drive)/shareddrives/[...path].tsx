@@ -1,6 +1,6 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react'
+import React, { useCallback, useState } from 'react'
 import { FlatList, Linking, RefreshControl, StyleSheet, View } from 'react-native'
-import { useLocalSearchParams, useRouter } from 'expo-router'
+import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router'
 import { useClient } from 'cozy-client'
 import { useTranslation } from 'react-i18next'
 import { Snackbar } from 'react-native-paper'
@@ -12,8 +12,6 @@ import { ErrorState } from '@/ui/ErrorState'
 import { LoadingState } from '@/ui/LoadingState'
 import { FileRow } from '@/ui/FileRow'
 import { FolderRow } from '@/ui/FolderRow'
-import { FileMetadataSheet, FileMetadataSheetHandle } from '@/ui/FileMetadataSheet'
-import { ShareSheet, ShareSheetHandle } from '@/ui/ShareSheet'
 import { useAuth } from '@/auth/useAuth'
 import { getErrorMessageKey } from '@/utils/errorMessages'
 import {
@@ -79,8 +77,6 @@ export default function SharedDrivesScreen() {
         : rawPath
           ? [rawPath]
           : []
-  const sheetRef = useRef<FileMetadataSheetHandle>(null)
-  const shareRef = useRef<ShareSheetHandle>(null)
   const [refreshing, setRefreshing] = useState(false)
   const [resolveError, setResolveError] = useState<string | null>(null)
   const offlineActions = useOfflineActions()
@@ -141,10 +137,12 @@ export default function SharedDrivesScreen() {
     }
   }, [client, driveId, currentFolderId])
 
-  useEffect(() => {
-    if (isRoot) void reloadDrives()
-    else void reloadFolder()
-  }, [isRoot, reloadDrives, reloadFolder])
+  useFocusEffect(
+    useCallback(() => {
+      if (isRoot) void reloadDrives()
+      else void reloadFolder()
+    }, [isRoot, reloadDrives, reloadFolder])
+  )
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true)
@@ -204,13 +202,7 @@ export default function SharedDrivesScreen() {
           onPress={folderItem =>
             router.push(`/(drive)/shareddrives/${[...path, folderItem._id].join('/')}`)
           }
-          onShare={folderItem =>
-            shareRef.current?.present({
-              _id: folderItem._id,
-              name: folderItem.name,
-              type: 'directory'
-            })
-          }
+          onShare={folderItem => router.push(`/share/${folderItem._id}`)}
           onTogglePin={onToggleFolderPin}
         />
       )
@@ -226,13 +218,7 @@ export default function SharedDrivesScreen() {
           })
         }}
         onTogglePin={onToggleFilePin}
-        onInfo={file =>
-          sheetRef.current?.present({
-            ...file,
-            cozyMetadata: item.cozyMetadata,
-            path: item.path
-          })
-        }
+        onInfo={file => router.push(`/metadata/${file._id}`)}
       />
     )
   }
@@ -258,9 +244,7 @@ export default function SharedDrivesScreen() {
           onRetry={() => (isRoot ? void reloadDrives() : void reloadFolder())}
         />
       ) : dataLength === 0 ? (
-        <EmptyState
-          message={t(isRoot ? 'drive.emptySharedDrives' : 'drive.emptyFolder')}
-        />
+        <EmptyState message={t(isRoot ? 'drive.emptySharedDrives' : 'drive.emptyFolder')} />
       ) : isRoot ? (
         <FlatList
           data={drives ?? []}
@@ -276,11 +260,6 @@ export default function SharedDrivesScreen() {
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
         />
       )}
-      <FileMetadataSheet
-        ref={sheetRef}
-        onShareRequested={file => shareRef.current?.present(file)}
-      />
-      <ShareSheet ref={shareRef} />
       <BigFolderConfirmDialog
         visible={!!offlineActions.pendingConfirmation}
         count={offlineActions.pendingConfirmation?.count ?? 0}
@@ -288,11 +267,7 @@ export default function SharedDrivesScreen() {
         onConfirm={() => void offlineActions.confirmPending()}
         onCancel={offlineActions.cancelPending}
       />
-      <Snackbar
-        visible={!!resolveError}
-        onDismiss={() => setResolveError(null)}
-        duration={3000}
-      >
+      <Snackbar visible={!!resolveError} onDismiss={() => setResolveError(null)} duration={3000}>
         {resolveError ?? ''}
       </Snackbar>
     </ScreenContainer>

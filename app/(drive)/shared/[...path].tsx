@@ -1,7 +1,7 @@
 import React, { useCallback, useRef, useState } from 'react'
 import { FlatList, RefreshControl, StyleSheet, View } from 'react-native'
 import { Snackbar } from 'react-native-paper'
-import { useLocalSearchParams, useRouter } from 'expo-router'
+import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router'
 import { useClient, useQuery } from 'cozy-client'
 import { useTranslation } from 'react-i18next'
 
@@ -12,8 +12,6 @@ import { ErrorState } from '@/ui/ErrorState'
 import { LoadingState } from '@/ui/LoadingState'
 import { FileRow } from '@/ui/FileRow'
 import { FolderRow } from '@/ui/FolderRow'
-import { FileMetadataSheet, FileMetadataSheetHandle } from '@/ui/FileMetadataSheet'
-import { ShareSheet, ShareSheetHandle } from '@/ui/ShareSheet'
 import { useAuth } from '@/auth/useAuth'
 import { getErrorMessageKey } from '@/utils/errorMessages'
 import {
@@ -47,8 +45,6 @@ export default function SharedScreen() {
         : rawPath
           ? [rawPath]
           : undefined
-  const sheetRef = useRef<FileMetadataSheetHandle>(null)
-  const shareRef = useRef<ShareSheetHandle>(null)
   const [refreshing, setRefreshing] = useState(false)
   const [snackbar, setSnackbar] = useState<string | null>(null)
   const client = useClient()
@@ -85,6 +81,28 @@ export default function SharedScreen() {
     as: fileByIdQueryAs(safeCurrentDirId),
     enabled: !isRoot
   })
+
+  const sharedIdsRef = useRef(sharedIds)
+  const sharedFilesQueryRef = useRef(sharedFilesQuery)
+  const subfoldersQueryRef = useRef(subfoldersQuery)
+  const folderFilesQRef = useRef(folderFilesQ)
+  sharedIdsRef.current = sharedIds
+  sharedFilesQueryRef.current = sharedFilesQuery
+  subfoldersQueryRef.current = subfoldersQuery
+  folderFilesQRef.current = folderFilesQ
+
+  useFocusEffect(
+    useCallback(() => {
+      if (isRoot) {
+        sharedIdsRef.current.refresh()
+        void sharedFilesQueryRef.current.fetch?.()
+      } else {
+        void subfoldersQueryRef.current.fetch()
+        void folderFilesQRef.current.fetch()
+      }
+    }, [isRoot])
+  )
+
   const lookupData = currentDirLookup.data
   const lookupDoc = Array.isArray(lookupData) ? lookupData[0] : lookupData
   const currentDirName = isRoot
@@ -113,13 +131,7 @@ export default function SharedScreen() {
           onPress={folder =>
             router.push(`/(drive)/shared/${[...(path ?? []), folder._id].join('/')}`)
           }
-          onShare={folder =>
-            shareRef.current?.present({
-              _id: folder._id,
-              name: folder.name,
-              type: 'directory'
-            })
-          }
+          onShare={folder => router.push(`/share/${folder._id}`)}
           onTogglePin={onToggleFolderPin}
         />
       )
@@ -134,17 +146,9 @@ export default function SharedScreen() {
             setSnackbar((e as Error).message ?? t('drive.preview.loadFailed'))
           })
         }}
-        onShare={file =>
-          shareRef.current?.present({ _id: file._id, name: file.name, type: 'file' })
-        }
+        onShare={file => router.push(`/share/${file._id}`)}
         onTogglePin={onToggleFilePin}
-        onInfo={file =>
-          sheetRef.current?.present({
-            ...file,
-            cozyMetadata: item.cozyMetadata,
-            path: item.path
-          })
-        }
+        onInfo={file => router.push(`/metadata/${file._id}`)}
       />
     )
   }
@@ -216,11 +220,6 @@ export default function SharedScreen() {
           }
         />
       )}
-      <FileMetadataSheet
-        ref={sheetRef}
-        onShareRequested={file => shareRef.current?.present(file)}
-      />
-      <ShareSheet ref={shareRef} />
       <BigFolderConfirmDialog
         visible={!!offlineActions.pendingConfirmation}
         count={offlineActions.pendingConfirmation?.count ?? 0}
