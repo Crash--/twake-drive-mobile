@@ -172,4 +172,65 @@ describe('FolderPicker', () => {
     )
     expect(screen.getByText('budget.xlsx')).toBeOnTheScreen()
   })
+
+  it('drills into a folder when its row is tapped', () => {
+    setupQueries('Work', [subfolder('a', 'Q1')])
+    const onConfirm = jest.fn()
+    render(
+      wrap(
+        <FolderPicker
+          initialFolderId="src"
+          excludeIds={new Set()}
+          confirmLabel="Move here"
+          isBusy={false}
+          onConfirm={onConfirm}
+          onCancel={jest.fn()}
+        />
+      )
+    )
+    // Tap the Q1 row to drill in, then immediately confirm.
+    // This proves the stack was updated (confirm fires with Q1's id 'a').
+    fireEvent.press(screen.getByText('Q1'))
+    fireEvent.press(screen.getByText('Move here'))
+    expect(onConfirm).toHaveBeenCalledWith(expect.objectContaining({ _id: 'a' }))
+  })
+
+  it('calls onCancel when the back arrow is tapped at the root level', () => {
+    setupQueries('Work', [])
+    const onCancel = jest.fn()
+    render(
+      wrap(
+        <FolderPicker
+          initialFolderId="src"
+          excludeIds={new Set()}
+          confirmLabel="Move here"
+          isBusy={false}
+          onConfirm={jest.fn()}
+          onCancel={onCancel}
+        />
+      )
+    )
+    // The t() mock returns keys as-is, so accessibilityLabel is 'common.back'.
+    fireEvent.press(screen.getByLabelText('common.back'))
+    expect(onCancel).toHaveBeenCalled()
+  })
+
+  it('opens the create-folder dialog when the "+ New folder" button is tapped', () => {
+    setupQueries('Work', [])
+    render(
+      wrap(
+        <FolderPicker
+          initialFolderId="src"
+          excludeIds={new Set()}
+          confirmLabel="Move here"
+          isBusy={false}
+          onConfirm={jest.fn()}
+          onCancel={jest.fn()}
+        />
+      )
+    )
+    fireEvent.press(screen.getByLabelText('drive.move.newFolder'))
+    // CreateFolderDialog renders a title whose translation key is returned as-is.
+    expect(screen.getByText('drive.createFolder.title')).toBeOnTheScreen()
+  })
 })
