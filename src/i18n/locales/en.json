@@ -133,7 +133,8 @@
     },
     "audio": {
       "unsupportedCodec": "This audio format is not played natively on this device.",
-      "openWith": "Open with…"
+      "openWith": "Open with…",
+      "noAppHint": "If nothing appeared, no installed app can read this format. Try VLC."
     },
     "note": {
       "title": "Note"
