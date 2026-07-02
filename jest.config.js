@@ -29,6 +29,9 @@ module.exports = {
     '^@/(.*)$': '<rootDir>/src/$1',
     '\\.(docx|xlsx|pptx)$': '<rootDir>/jest/binaryStub.js',
     '^react-native-vector-icons/.*$': '<rootDir>/jest/vectorIconsStub.js',
+    '^react-native-inappbrowser-reborn$': '<rootDir>/jest/inappBrowserStub.js',
+    '^react-native-ios11-devicecheck$': '<rootDir>/jest/emptyNativeStub.js',
+    '^react-native-google-play-integrity$': '<rootDir>/jest/emptyNativeStub.js',
   },
   testPathIgnorePatterns: ['/node_modules/', '/.expo/'],
   // Keep setImmediate real so that flush() helpers in tests work correctly with
