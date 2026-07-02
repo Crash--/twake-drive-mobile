@@ -138,7 +138,16 @@
       "docs": "New document",
       "text": "Word document",
       "sheet": "Spreadsheet",
-      "slide": "Presentation"
+      "slide": "Presentation",
+      "excalidraw": "Excalidraw",
+      "shortcut": "Shortcut"
+    },
+    "createShortcut": {
+      "title": "New shortcut",
+      "nameLabel": "Name",
+      "urlLabel": "URL",
+      "submit": "Create",
+      "errorGeneric": "Failed to create shortcut."
     },
     "createOffice": {
       "title": "Document name",

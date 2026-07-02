@@ -1,5 +1,5 @@
 import React, { useCallback, useMemo, useRef, useState } from 'react'
-import { FlatList, RefreshControl, StyleSheet, View } from 'react-native'
+import { FlatList, Linking, RefreshControl, StyleSheet, View } from 'react-native'
 import { FAB, Snackbar } from 'react-native-paper'
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router'
 import { useClient, useQuery } from 'cozy-client'
@@ -19,6 +19,8 @@ import { SortControl } from '@/ui/SortControl'
 import { useFolderSort } from '@/ui/useFolderSort'
 import { CreateFolderDialog } from '@/ui/CreateFolderDialog'
 import { CreateOfficeFileDialog } from '@/ui/CreateOfficeFileDialog'
+import { CreateShortcutDialog } from '@/ui/CreateShortcutDialog'
+import { CozyIcon } from '@/ui/icons/CozyIcon'
 import { ConfirmDeleteDialog } from '@/ui/ConfirmDeleteDialog'
 import { RenameDialog } from '@/ui/RenameDialog'
 import { useMultiSelect } from '@/ui/useMultiSelect'
@@ -27,6 +29,8 @@ import { getErrorMessageKey } from '@/utils/errorMessages'
 import { createFolder } from '@/files/createFolder'
 import { createCozyNote } from '@/files/createCozyNote'
 import { createOfficeFile, OfficeFileClass } from '@/files/createOfficeFile'
+import { createShortcut } from '@/files/createShortcut'
+import { buildCozyAppUrl, getSessionCode } from '@/files/cozyAppLink'
 import { softDeleteEntry } from '@/files/deleteFile'
 import { renameEntry } from '@/files/renameEntry'
 import { openFileFromList } from '@/files/openFromList'
@@ -64,6 +68,7 @@ export default function FilesScreen() {
   const [refreshing, setRefreshing] = useState(false)
   const [createFolderVisible, setCreateFolderVisible] = useState(false)
   const [creatingClass, setCreatingClass] = useState<OfficeFileClass | null>(null)
+  const [createShortcutVisible, setCreateShortcutVisible] = useState(false)
   const [fabOpen, setFabOpen] = useState(false)
   const [pendingDelete, setPendingDelete] = useState<FileQueryResult | null>(null)
   const [pendingRename, setPendingRename] = useState<FileQueryResult | null>(null)
@@ -167,6 +172,30 @@ export default function FilesScreen() {
 
   const handleCreateDocs = (): void => {
     router.push(`/docs/new/${currentDirId}`)
+  }
+
+  const handleCreateExcalidraw = async (): Promise<void> => {
+    if (!requireOnline(isOnline, setSnackbar, t)) return
+    if (!client) return
+    try {
+      const sessionCode = await getSessionCode(client)
+      const stackUri = (client.getStackClient() as unknown as { uri: string }).uri
+      // Open the Cozy excalidraw web app; it handles file creation and
+      // saves into dirId via its own UI. Pragmatic approach: no server-side
+      // file is pre-created — the excalidraw app owns the create flow.
+      const url = buildCozyAppUrl(stackUri, 'excalidraw', sessionCode, '/')
+      await Linking.openURL(url)
+    } catch (e) {
+      console.error('[FilesScreen] excalidraw open failed', e)
+    }
+  }
+
+  const handleCreateShortcut = async (name: string, url: string): Promise<void> => {
+    if (!requireOnline(isOnline, setSnackbar, t)) return
+    if (!client) throw new Error('No client')
+    await createShortcut(client, currentDirId, name, url)
+    setCreateShortcutVisible(false)
+    await Promise.all([foldersQuery.fetch(), filesQuery.fetch()])
   }
 
   const requestDelete = (entry: FileQueryResult): void => {
@@ -382,6 +411,20 @@ export default function FilesScreen() {
       icon: 'file-presentation-box',
       label: t('drive.createMenu.slide'),
       onPress: () => setCreatingClass('slide')
+    },
+    {
+      icon: (p: { size: number; color?: string }) => (
+        <CozyIcon name="excalidraw" size={p.size} color={p.color} />
+      ),
+      label: t('drive.createMenu.excalidraw'),
+      onPress: () => void handleCreateExcalidraw()
+    },
+    {
+      icon: (p: { size: number; color?: string }) => (
+        <CozyIcon name="deviceBrowser" size={p.size} color={p.color} />
+      ),
+      label: t('drive.createMenu.shortcut'),
+      onPress: () => setCreateShortcutVisible(true)
     }
   ]
 
@@ -479,6 +522,11 @@ export default function FilesScreen() {
         fileClass={creatingClass}
         onDismiss={() => setCreatingClass(null)}
         onSubmit={handleCreateOffice}
+      />
+      <CreateShortcutDialog
+        visible={createShortcutVisible}
+        onDismiss={() => setCreateShortcutVisible(false)}
+        onSubmit={handleCreateShortcut}
       />
       <ConfirmDeleteDialog
         visible={!!pendingDelete}

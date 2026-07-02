@@ -138,7 +138,16 @@
       "docs": "Nouveau document Docs",
       "text": "Document Word",
       "sheet": "Tableur",
-      "slide": "Présentation"
+      "slide": "Présentation",
+      "excalidraw": "Excalidraw",
+      "shortcut": "Raccourci"
+    },
+    "createShortcut": {
+      "title": "Nouveau raccourci",
+      "nameLabel": "Nom",
+      "urlLabel": "Adresse web",
+      "submit": "Créer",
+      "errorGeneric": "Impossible de créer le raccourci."
     },
     "createOffice": {
       "title": "Nom du document",
