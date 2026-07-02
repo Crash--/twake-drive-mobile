@@ -25,7 +25,7 @@ jest.mock('@/ui/SyncIndicator', () => ({
   SyncIndicator: () => null
 }))
 
-import FavoritesScreen from './index'
+import FavoritesScreen from './favorites'
 import i18n from '@/i18n'
 
 const wrap = (ui: React.ReactElement) => (
