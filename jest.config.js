@@ -34,6 +34,9 @@ module.exports = {
     '^react-native-google-play-integrity$': '<rootDir>/jest/emptyNativeStub.js',
   },
   testPathIgnorePatterns: ['/node_modules/', '/.expo/'],
+  // Cold CI runners pay the heavy cozy-client import chain on a suite's first
+  // test; jest's 5s default times out there (passes locally). 20s absorbs it.
+  testTimeout: 20000,
   // Keep setImmediate real so that flush() helpers in tests work correctly with
   // jest.useFakeTimers().  Node 16 does not fake setImmediate via modern timers
   // by default in some configurations; making it explicit avoids hangs.
