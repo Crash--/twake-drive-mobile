@@ -12,6 +12,9 @@ import { ErrorState } from '@/ui/ErrorState'
 import { LoadingState } from '@/ui/LoadingState'
 import { FileRow } from '@/ui/FileRow'
 import { FolderRow } from '@/ui/FolderRow'
+import { FileGridItem } from '@/ui/FileGridItem'
+import { ViewSwitcher } from '@/ui/ViewSwitcher'
+import { useViewMode } from '@/ui/useViewMode'
 import { CreateFolderDialog } from '@/ui/CreateFolderDialog'
 import { CreateOfficeFileDialog } from '@/ui/CreateOfficeFileDialog'
 import { ConfirmDeleteDialog } from '@/ui/ConfirmDeleteDialog'
@@ -65,6 +68,7 @@ export default function FilesScreen() {
   const [bulkConfirmVisible, setBulkConfirmVisible] = useState(false)
   const [deleting, setDeleting] = useState(false)
   const [snackbar, setSnackbar] = useState<string | null>(null)
+  const { mode } = useViewMode()
   const selection = useMultiSelect()
   const offlineActions = useOfflineActions()
   const onToggleFilePin = useCallback(
@@ -300,6 +304,34 @@ export default function FilesScreen() {
     )
   }
 
+  const renderGridItem = ({ item }: { item: FileQueryResult }) => {
+    const isSelected = selection.isSelected(item._id)
+    return (
+      <FileGridItem
+        file={item}
+        selected={isSelected}
+        onPress={file => {
+          if (selection.isSelecting) {
+            selection.toggle(file._id)
+            return
+          }
+          if (item.type === 'directory') {
+            router.push(`/(drive)/files/${[...(path ?? []), file._id].join('/')}`)
+          } else {
+            if (!client) return
+            void openFileFromList(client, router, file).catch(
+              e => {
+                console.error('[FilesScreen] openFileFromList failed', e)
+                setSnackbar((e as Error).message ?? t('drive.preview.loadFailed'))
+              }
+            )
+          }
+        }}
+        onLongPress={file => selection.select(file._id)}
+      />
+    )
+  }
+
   // Folders first, then files — same display order as twake-drive-web.
   const folderDocs = (foldersQuery.data as FileQueryResult[] | null | undefined) ?? []
   const fileDocs = (filesQuery.data as FileQueryResult[] | null | undefined) ?? []
@@ -382,6 +414,9 @@ export default function FilesScreen() {
             : undefined
         }
       />
+      <View style={styles.toolbar}>
+        <ViewSwitcher />
+      </View>
       {(foldersQuery.fetchStatus === 'loading' || filesQuery.fetchStatus === 'loading') &&
       data.length === 0 ? (
         <LoadingState />
@@ -397,9 +432,11 @@ export default function FilesScreen() {
         <EmptyState message={t('drive.emptyFolder')} />
       ) : (
         <FlatList
+          key={mode}
           data={data}
           keyExtractor={item => item._id}
-          renderItem={renderItem}
+          numColumns={mode === 'grid' ? 3 : undefined}
+          renderItem={mode === 'grid' ? renderGridItem : renderItem}
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
           onEndReachedThreshold={0.5}
           onEndReached={() => {
@@ -462,5 +499,11 @@ export default function FilesScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1 }
+  container: { flex: 1 },
+  toolbar: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    paddingHorizontal: 8,
+    paddingVertical: 4
+  }
 })
