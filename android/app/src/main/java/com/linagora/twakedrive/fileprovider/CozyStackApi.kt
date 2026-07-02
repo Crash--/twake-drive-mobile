@@ -99,6 +99,19 @@ class CozyStackApi(private val session: SessionStore) {
         }
     }
 
-    // Write methods (createDirectory/createFile/upload/rename/move/trash),
-    // thumbnail, and statByPath land in Tasks 7–11.
+    fun thumbnail(file: CozyFile, dest: File): Boolean {
+        // cozy-stack exposes thumbnails via the file's medium link; fetch it directly.
+        val url = "${base()}/files/${file.id}/thumbnails/medium"
+        val req = Request.Builder().url(url).build()
+        return try {
+            exec(req).use { resp ->
+                dest.parentFile?.mkdirs()
+                dest.outputStream().use { out -> resp.body!!.byteStream().copyTo(out) }
+            }
+            true
+        } catch (e: IOException) { false }
+    }
+
+    // Write methods (createDirectory/createFile/upload/rename/move/trash)
+    // and statByPath land in Tasks 9–11.
 }

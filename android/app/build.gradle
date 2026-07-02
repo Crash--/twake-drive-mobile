@@ -212,6 +212,12 @@ dependencies {
     // already requires JDK 21, so 4.16.1 (latest stable patch on that line, verified on Maven
     // Central) is the correct fix rather than pinning tests to an older simulated SDK.
     testImplementation("org.robolectric:robolectric:4.16.1")
+    // Robolectric's RobolectricTestRunner does not pull androidx.test:core transitively;
+    // DocumentCacheTest needs androidx.test.core.app.ApplicationProvider to obtain a
+    // Robolectric-backed Context. 1.6.1 is the latest stable (non-alpha/beta/rc) release,
+    // verified available via the google() repo already declared in the root build.gradle.
+    // testImplementation-only: does not touch the release/compile classpath.
+    testImplementation("androidx.test:core:1.6.1")
     testImplementation("com.squareup.okhttp3:mockwebserver:4.12.0")
     testImplementation("org.jetbrains.kotlin:kotlin-test-junit")
     // Real org.json implementation for plain (non-Robolectric) unit tests: the Android

@@ -1,5 +1,6 @@
 package com.linagora.twakedrive.fileprovider
 
+import android.content.res.AssetFileDescriptor
 import android.database.Cursor
 import android.database.MatrixCursor
 import android.os.CancellationSignal
@@ -10,11 +11,13 @@ class TwakeDocumentsProvider : DocumentsProvider() {
 
     private lateinit var session: SessionStore
     private lateinit var api: CozyStackApi
+    private lateinit var cache: DocumentCache
 
     override fun onCreate(): Boolean {
         val ctx = context ?: return false
         session = SessionStore(EncryptedCredentialStore(ctx), okhttp3.OkHttpClient())
         api = CozyStackApi(session)
+        cache = DocumentCache(ctx)
         return true
     }
 
@@ -58,5 +61,28 @@ class TwakeDocumentsProvider : DocumentsProvider() {
         documentId: String?,
         mode: String?,
         signal: CancellationSignal?
-    ): ParcelFileDescriptor = throw UnsupportedOperationException("Task 7")
+    ): ParcelFileDescriptor {
+        val id = documentId ?: throw java.io.FileNotFoundException("null id")
+        val wantsWrite = (mode ?: "r").contains('w')
+        if (wantsWrite) return openForWrite(id, mode!!) // Task 9
+        val local = cache.ensureLocal(id, api)
+        return ParcelFileDescriptor.open(local, ParcelFileDescriptor.MODE_READ_ONLY)
+    }
+
+    override fun openDocumentThumbnail(
+        documentId: String?,
+        sizeHint: android.graphics.Point?,
+        signal: CancellationSignal?
+    ): AssetFileDescriptor? {
+        val id = documentId ?: return null
+        val f = cache.cachedFile("$id.thumb")
+        if (!f.exists() || f.length() == 0L) {
+            if (!api.thumbnail(api.get(id), f)) return null
+        }
+        val pfd = ParcelFileDescriptor.open(f, ParcelFileDescriptor.MODE_READ_ONLY)
+        return AssetFileDescriptor(pfd, 0, AssetFileDescriptor.UNKNOWN_LENGTH)
+    }
+
+    private fun openForWrite(id: String, mode: String): ParcelFileDescriptor =
+        throw UnsupportedOperationException("Task 9")
 }
