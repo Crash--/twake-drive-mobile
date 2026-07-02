@@ -102,4 +102,28 @@ describe('SearchScreen', () => {
     fireEvent.press(screen.getByText('Docs'))
     expect(mockPush).toHaveBeenCalledWith('/(drive)/files/d1')
   })
+
+  // cozy-client returns fetchStatus 'pending' (NOT 'loading') on the first render
+  // of a brand-new query key — the fetch fires in a useEffect, after paint. The
+  // empty state must NOT flash before results/spinner.
+  it("n'affiche PAS l'état vide tant que la requête est 'pending'", () => {
+    setQuery({ data: [], fetchStatus: 'pending' })
+    render(<SearchScreen />)
+    fireEvent.changeText(screen.getByPlaceholderText('drive.search.placeholder'), 're')
+    expect(screen.queryByText('drive.search.empty')).toBeNull()
+  })
+
+  it("n'affiche PAS l'état vide pendant 'loading'", () => {
+    setQuery({ data: [], fetchStatus: 'loading' })
+    render(<SearchScreen />)
+    fireEvent.changeText(screen.getByPlaceholderText('drive.search.placeholder'), 're')
+    expect(screen.queryByText('drive.search.empty')).toBeNull()
+  })
+
+  it("affiche l'état vide seulement quand la requête a abouti sans résultat", () => {
+    setQuery({ data: [], fetchStatus: 'success' })
+    render(<SearchScreen />)
+    fireEvent.changeText(screen.getByPlaceholderText('drive.search.placeholder'), 're')
+    expect(screen.getByText('drive.search.empty')).toBeTruthy()
+  })
 })

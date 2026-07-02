@@ -62,7 +62,8 @@ export default function SearchScreen() {
       />
       {!enabled ? (
         <EmptyState message={t('drive.search.hint')} />
-      ) : query.fetchStatus === 'loading' && data.length === 0 ? (
+      ) : (query.fetchStatus === 'loading' || query.fetchStatus === 'pending') &&
+        data.length === 0 ? (
         <LoadingState />
       ) : query.fetchStatus === 'failed' ? (
         <ErrorState
