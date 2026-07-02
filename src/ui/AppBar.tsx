@@ -1,10 +1,12 @@
 import React, { useState } from 'react'
-import { StyleSheet, View } from 'react-native'
-import { Appbar, Menu } from 'react-native-paper'
+import { Pressable, StyleSheet, View } from 'react-native'
+import { Appbar, Avatar, Menu, useTheme } from 'react-native-paper'
 import { useTranslation } from 'react-i18next'
+import { useRouter } from 'expo-router'
 
 import { SyncIndicator } from './SyncIndicator'
 import { TwakeLogo } from '@/ui/icons/TwakeLogo'
+import { CozyIcon } from '@/ui/icons/CozyIcon'
 
 export interface AppBarSelectionAction {
   icon: string
@@ -37,6 +39,9 @@ interface Props {
 export const AppBar = ({ title, onBack, onLogout, selection }: Props) => {
   const { t } = useTranslation()
   const [menuVisible, setMenuVisible] = useState(false)
+  const theme = useTheme()
+  const router = useRouter()
+  const initials = 'MM'
 
   if (selection) {
     return (
@@ -74,14 +79,41 @@ export const AppBar = ({ title, onBack, onLogout, selection }: Props) => {
         <Menu
           visible={menuVisible}
           onDismiss={() => setMenuVisible(false)}
-          anchor={<Appbar.Action icon="dots-vertical" onPress={() => setMenuVisible(true)} />}
+          anchor={
+            <Pressable onPress={() => setMenuVisible(true)}>
+              <Avatar.Text size={32} label={initials} />
+            </Pressable>
+          }
         >
+          <Menu.Item
+            onPress={() => {
+              setMenuVisible(false)
+              router.push('/(drive)/settings')
+            }}
+            title={t('settings.title')}
+            leadingIcon={() => (
+              <CozyIcon name="cog" size={24} color={theme.colors.onSurface} />
+            )}
+          />
+          <Menu.Item
+            onPress={() => {
+              setMenuVisible(false)
+              router.push('/(drive)/shareddrives')
+            }}
+            title={t('drive.sharedDrives')}
+            leadingIcon={() => (
+              <CozyIcon name="folderMultiple" size={24} color={theme.colors.onSurface} />
+            )}
+          />
           <Menu.Item
             onPress={() => {
               setMenuVisible(false)
               onLogout()
             }}
             title={t('common.logout')}
+            leadingIcon={() => (
+              <CozyIcon name="logout" size={24} color={theme.colors.onSurface} />
+            )}
           />
         </Menu>
       ) : null}
