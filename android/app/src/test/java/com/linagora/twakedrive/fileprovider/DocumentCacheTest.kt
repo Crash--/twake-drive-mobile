@@ -25,4 +25,17 @@ class DocumentCacheTest {
         val blob = File(ctx.filesDir, "offline/xyz").apply { parentFile?.mkdirs(); writeText("hi") }
         assertEquals(blob, cache.offlineBlob("xyz"))
     }
+
+    @Test fun `invalidate deletes both the cached content and thumbnail`() {
+        val cache = DocumentCache(ctx)
+        val content = cache.cachedFile("x").apply { parentFile?.mkdirs(); writeText("old content") }
+        val thumb = cache.cachedFile("x.thumb").apply { parentFile?.mkdirs(); writeText("old thumb") }
+        assertTrue(content.exists())
+        assertTrue(thumb.exists())
+
+        cache.invalidate("x")
+
+        assertTrue(!content.exists())
+        assertTrue(!thumb.exists())
+    }
 }

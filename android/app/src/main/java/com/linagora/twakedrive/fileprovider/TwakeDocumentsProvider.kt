@@ -93,16 +93,21 @@ class TwakeDocumentsProvider : DocumentsProvider() {
             tmp.writeBytes(ByteArray(0))
         }
         val handler = android.os.Handler(handlerThread.looper)
-        val mimeType = try { api.get(id).mime } catch (e: Exception) { null }
-            ?: "application/octet-stream"
+        val mimeType = try { api.get(id).mime } catch (e: Exception) {
+            android.util.Log.w("TwakeDP", "mime lookup failed for $id, defaulting", e)
+            null
+        } ?: "application/octet-stream"
         return ParcelFileDescriptor.open(
             tmp,
             ParcelFileDescriptor.parseMode(mode),
             handler
         ) { err ->
             try {
-                if (err == null) { api.upload(id, tmp, mimeType); notifyChange(parentOf(id)) }
-                else android.util.Log.w("TwakeDP", "write FD closed with error for $id", err)
+                if (err == null) {
+                    api.upload(id, tmp, mimeType)
+                    cache.invalidate(id) // drop stale read/thumbnail cache so the next read re-fetches
+                    notifyChange(parentOf(id))
+                } else android.util.Log.w("TwakeDP", "write FD closed with error for $id", err)
             } catch (e: Exception) {
                 android.util.Log.e("TwakeDP", "upload on close failed for $id", e)
             } finally { tmp.delete() }
@@ -114,7 +119,10 @@ class TwakeDocumentsProvider : DocumentsProvider() {
     }
 
     private fun parentOf(id: String): String =
-        try { api.get(id).dirId ?: DocumentMapper.ROOT_DOC_ID } catch (e: Exception) { DocumentMapper.ROOT_DOC_ID }
+        try { api.get(id).dirId ?: DocumentMapper.ROOT_DOC_ID } catch (e: Exception) {
+            android.util.Log.w("TwakeDP", "parentOf lookup failed for $id, defaulting to root", e)
+            DocumentMapper.ROOT_DOC_ID
+        }
 
     override fun createDocument(
         parentDocumentId: String?,

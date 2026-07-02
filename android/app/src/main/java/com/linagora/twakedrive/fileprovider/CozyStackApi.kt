@@ -153,5 +153,5 @@ class CozyStackApi(private val session: SessionStore) {
         }
     }
 
-    // Rename/move/trash and statByPath land in Task 10–11.
+    // Rename/move/trash and statByPath land in Tasks 10–11.
 }

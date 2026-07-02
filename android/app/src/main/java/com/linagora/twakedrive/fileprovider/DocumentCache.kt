@@ -26,4 +26,10 @@ class DocumentCache(private val context: Context) {
     }
 
     fun tempFor(id: String): File = File(dir(), "$id.tmp")
+
+    /** Drop any cached content + thumbnail for this id, forcing the next read to re-fetch. */
+    fun invalidate(id: String) {
+        cachedFile(id).delete()
+        cachedFile("$id.thumb").delete()
+    }
 }
