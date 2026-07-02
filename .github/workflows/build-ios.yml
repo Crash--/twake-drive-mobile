@@ -32,6 +32,19 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      # Restore Pods keyed on Podfile.lock so `pod install` skips re-download
+      # when unchanged. Deeper iOS compile caching (Xcode ccache / DerivedData
+      # reuse) is a fragile follow-up, not done here.
+      - name: Cache CocoaPods
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+        with:
+          path: |
+            ios/Pods
+            ~/Library/Caches/CocoaPods
+          key: pods-${{ hashFiles('ios/Podfile.lock') }}
+          restore-keys: |
+            pods-
+
       - name: Install CocoaPods
         working-directory: ios
         run: pod install

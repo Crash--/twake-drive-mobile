@@ -19,9 +19,16 @@ permissions:
 jobs:
   build-android:
     runs-on: ubuntu-24.04
-    # New Arch compiles native code; cold cache may also download the NDK.
-    # Warm builds are ~15-20 min. Cap high so a cold first build doesn't
-    # trip a spurious timeout; the cap only guards genuine hangs.
+    # Route the NDK C++ compiler through ccache (cached across runs) — the main
+    # lever for New-Arch native build time. Honored by every RN native module's
+    # CMake configure (CMake reads CMAKE_<LANG>_COMPILER_LAUNCHER from the env
+    # since 3.17; the NDK ships CMake 3.22+).
+    env:
+      CMAKE_C_COMPILER_LAUNCHER: ccache
+      CMAKE_CXX_COMPILER_LAUNCHER: ccache
+    # New Arch compiles native code. Cold cache ~15-20 min; warm (ccache +
+    # gradle build cache) considerably less. Cap high so a cold first build
+    # doesn't trip a spurious timeout; the cap only guards genuine hangs.
     timeout-minutes: 60
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
@@ -39,6 +46,12 @@ jobs:
           node-version: '20'
           cache: 'npm'
 
+      - name: Set up ccache
+        uses: hendrikmuhs/ccache-action@d62db5f07c26379fc4b4e0916f098a92573c3b03 # v1.2.23
+        with:
+          key: android-ccache
+          max-size: 2G
+
       - name: Install dependencies
         run: npm ci
 
@@ -47,7 +60,11 @@ jobs:
       # arm64 (real devices) + x86_64 (emulators) to halve build time and size.
       - name: Build release APK
         working-directory: android
-        run: ./gradlew assembleRelease --no-daemon -PreactNativeArchitectures=arm64-v8a,x86_64
+        run: ./gradlew assembleRelease --no-daemon --build-cache -PreactNativeArchitectures=arm64-v8a,x86_64
+
+      - name: ccache stats
+        if: always()
+        run: ccache -s
 
       - name: Locate APK
         id: apk
