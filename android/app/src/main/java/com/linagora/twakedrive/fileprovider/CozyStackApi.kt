@@ -153,5 +153,44 @@ class CozyStackApi(private val session: SessionStore) {
         }
     }
 
-    // Rename/move/trash and statByPath land in Tasks 10–11.
+    private fun patchAttributes(id: String, attrsJson: String): CozyFile {
+        val payload = """{"data":{"type":"io.cozy.files","id":"$id","attributes":$attrsJson}}"""
+        val body = payload.toRequestBody("application/vnd.api+json".toMediaTypeOrNull())
+        val req = Request.Builder().url("${base()}/files/$id")
+            .header("Accept", "application/vnd.api+json").patch(body).build()
+        exec(req).use {
+            val data = JSONObject(it.body!!.string()).getJSONObject("data")
+            return CozyFile.fromAttributes(data.getString("id"), data.getJSONObject("attributes"))
+        }
+    }
+
+    fun rename(id: String, newName: String): CozyFile =
+        patchAttributes(id, JSONObject().put("name", newName).toString())
+
+    fun trash(id: String) {
+        val req = Request.Builder().url("${base()}/files/$id")
+            .header("Accept", "application/vnd.api+json").delete().build()
+        exec(req).close()
+    }
+
+    fun statByPath(path: String): CozyFile? = try {
+        val data = jsonGet("/files/metadata?Path=${enc(path)}").getJSONObject("data")
+        CozyFile.fromAttributes(data.getString("id"), data.getJSONObject("attributes"))
+    } catch (e: FileNotFoundException) { null }
+
+    fun move(id: String, targetParentId: String): CozyFile {
+        val patch = JSONObject().put("dir_id", targetParentId).toString()
+        try {
+            return patchAttributes(id, patch)
+        } catch (e: AuthRequiredException) {
+            throw e // subclass of IOException — must be caught before the 409 handler
+        } catch (e: IOException) {
+            if (!e.message.orEmpty().contains("HTTP 409")) throw e
+            // 409: trash the conflicting destination entry, then retry (mirrors moveEntry.ts).
+            val moving = get(id)
+            val destPath = get(targetParentId).path?.trimEnd('/') ?: throw e
+            statByPath("$destPath/${moving.name}")?.let { trash(it.id) }
+            return patchAttributes(id, patch)
+        }
+    }
 }

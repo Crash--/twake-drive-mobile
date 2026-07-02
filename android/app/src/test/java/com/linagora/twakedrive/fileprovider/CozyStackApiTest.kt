@@ -142,4 +142,30 @@ class CozyStackApiTest {
         assertEquals("/files/f1", req.path)
         assertEquals("hello", req.body.readUtf8())
     }
+
+    @Test fun `rename PATCHes the name attribute`() {
+        server.enqueue(MockResponse().setBody("""{"data":{"id":"f1","type":"io.cozy.files","attributes":{"type":"file","name":"b.txt","size":"1"}}}"""))
+        api = CozyStackApi(sessionFor(server.url("/").toString()))
+        val f = api.rename("f1", "b.txt")
+        assertEquals("b.txt", f.name)
+        val req = server.takeRequest()
+        assertEquals("PATCH", req.method); assertEquals("/files/f1", req.path)
+        assertTrue(req.body.readUtf8().contains("\"name\":\"b.txt\""))
+    }
+
+    @Test fun `move PATCHes the dir_id attribute`() {
+        server.enqueue(MockResponse().setBody("""{"data":{"id":"f1","type":"io.cozy.files","attributes":{"type":"file","name":"a.txt","size":"1","dir_id":"dest"}}}"""))
+        api = CozyStackApi(sessionFor(server.url("/").toString()))
+        val f = api.move("f1", "dest")
+        assertEquals("dest", f.dirId)
+        assertTrue(server.takeRequest().body.readUtf8().contains("\"dir_id\":\"dest\""))
+    }
+
+    @Test fun `trash DELETEs the file`() {
+        server.enqueue(MockResponse().setResponseCode(200).setBody("""{"data":{"id":"f1","type":"io.cozy.files","attributes":{"type":"file","name":"a.txt","size":"1"}}}"""))
+        api = CozyStackApi(sessionFor(server.url("/").toString()))
+        api.trash("f1")
+        val req = server.takeRequest()
+        assertEquals("DELETE", req.method); assertEquals("/files/f1", req.path)
+    }
 }

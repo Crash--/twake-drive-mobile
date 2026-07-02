@@ -143,4 +143,47 @@ class TwakeDocumentsProvider : DocumentsProvider() {
             DocumentMapper.AUTHORITY, parentDocumentId)
         context?.contentResolver?.notifyChange(uri, null)
     }
+
+    override fun renameDocument(documentId: String?, displayName: String?): String? {
+        val id = documentId ?: throw java.io.FileNotFoundException("null id")
+        val f = api.rename(id, displayName ?: "untitled")
+        notifyChange(f.dirId ?: DocumentMapper.ROOT_DOC_ID)
+        return null // id is stable
+    }
+
+    override fun moveDocument(
+        documentId: String?, sourceParentDocumentId: String?, targetParentDocumentId: String?
+    ): String {
+        val id = documentId ?: throw java.io.FileNotFoundException("null id")
+        val target = targetParentDocumentId ?: throw java.io.FileNotFoundException("null target")
+        api.move(id, target)
+        sourceParentDocumentId?.let { notifyChange(it) }
+        notifyChange(target)
+        return id
+    }
+
+    override fun deleteDocument(documentId: String?) {
+        val id = documentId ?: throw java.io.FileNotFoundException("null id")
+        val parent = parentOf(id)
+        api.trash(id)
+        notifyChange(parent)
+    }
+
+    override fun removeDocument(documentId: String?, parentDocumentId: String?) {
+        val id = documentId ?: throw java.io.FileNotFoundException("null id")
+        api.trash(id)
+        notifyChange(parentDocumentId ?: parentOf(id))
+    }
+
+    override fun isChildDocument(parentDocumentId: String?, documentId: String?): Boolean {
+        if (parentDocumentId == null || documentId == null) return false
+        if (parentDocumentId == DocumentMapper.ROOT_DOC_ID) return true // single-root tree
+        var current: String? = documentId
+        var hops = 0
+        while (current != null && hops++ < 64) {
+            if (current == parentDocumentId) return true
+            current = try { api.get(current).dirId } catch (e: Exception) { null }
+        }
+        return false
+    }
 }
