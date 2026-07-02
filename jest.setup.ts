@@ -5,8 +5,12 @@ if (typeof FormData === 'undefined') {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   ;(global as any).FormData = class FormData {
     private data: Record<string, string> = {}
-    append(key: string, value: string) { this.data[key] = value }
-    get(key: string) { return this.data[key] ?? null }
+    append(key: string, value: string) {
+      this.data[key] = value
+    }
+    get(key: string) {
+      return this.data[key] ?? null
+    }
   }
 }
 

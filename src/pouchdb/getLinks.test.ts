@@ -16,7 +16,7 @@ describe('getLinks', () => {
   it('returns [PouchLink, StackLink] in that order', () => {
     const links = getLinks()
     expect(links).toHaveLength(2)
-    expect((PouchLink as unknown as jest.Mock)).toHaveBeenCalledTimes(1)
+    expect(PouchLink as unknown as jest.Mock).toHaveBeenCalledTimes(1)
   })
 
   it('passes platformReactNative.pouchAdapter to PouchLink (not pouchdb-browser)', () => {

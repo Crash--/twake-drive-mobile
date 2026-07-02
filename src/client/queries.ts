@@ -50,11 +50,7 @@ const buildDriveQuery = (dirId: string, type: 'directory' | 'file'): QueryDefini
     .where({ dir_id: dirId, type, name: { $gt: null } })
     .partialIndex({ _id: { $nin: HIDDEN_ROOT_DIR_IDS } })
     .indexFields(['dir_id', 'type', 'name'])
-    .sortBy([
-      { dir_id: 'asc' },
-      { type: 'asc' },
-      { name: 'asc' }
-    ])
+    .sortBy([{ dir_id: 'asc' }, { type: 'asc' }, { name: 'asc' }])
     .limitBy(100)
 
 export const folderSubfoldersQuery = (dirId: string): QueryDefinition =>
@@ -62,10 +58,8 @@ export const folderSubfoldersQuery = (dirId: string): QueryDefinition =>
 export const folderSubfoldersQueryAs = (dirId: string): string =>
   `io.cozy.files/dir/${dirId}/folders`
 
-export const folderFilesQuery = (dirId: string): QueryDefinition =>
-  buildDriveQuery(dirId, 'file')
-export const folderFilesQueryAs = (dirId: string): string =>
-  `io.cozy.files/dir/${dirId}/files`
+export const folderFilesQuery = (dirId: string): QueryDefinition => buildDriveQuery(dirId, 'file')
+export const folderFilesQueryAs = (dirId: string): string => `io.cozy.files/dir/${dirId}/files`
 
 export interface SharingRule {
   title: string
@@ -111,21 +105,20 @@ export const recentQueryAs = 'recent-view-query'
 //
 // Pagination / infinite-scroll is a follow-up; for now the limit matches
 // web's default of 100 per page (web paginates).
-export const trashFoldersQuery = (): QueryDefinition =>
-  buildDriveQuery(TRASH_DIR_ID, 'directory')
+export const trashFoldersQuery = (): QueryDefinition => buildDriveQuery(TRASH_DIR_ID, 'directory')
 export const trashFoldersQueryAs = 'io.cozy.files/trash/folders'
 
-export const trashFilesQuery = (): QueryDefinition =>
-  buildDriveQuery(TRASH_DIR_ID, 'file')
+export const trashFilesQuery = (): QueryDefinition => buildDriveQuery(TRASH_DIR_ID, 'file')
 export const trashFilesQueryAs = 'io.cozy.files/trash/files'
 
 export const fileByIdQuery = (id: string): QueryDefinition => Q('io.cozy.files').getById(id)
 export const fileByIdQueryAs = (id: string): string => `io.cozy.files/${id}`
 
 export const filesByIdsQuery = (ids: string[]): QueryDefinition =>
-  Q('io.cozy.files').getByIds(ids).sortBy([{ type: 'asc' }, { name: 'asc' }])
-export const filesByIdsQueryAs = (ids: string[]): string =>
-  `io.cozy.files/byIds/${ids.join('-')}`
+  Q('io.cozy.files')
+    .getByIds(ids)
+    .sortBy([{ type: 'asc' }, { name: 'asc' }])
+export const filesByIdsQueryAs = (ids: string[]): string => `io.cozy.files/byIds/${ids.join('-')}`
 
 // Reachable contacts: those that have at least one email or one cozy URL and
 // are not trashed. Mirrors cozy-sharing's `buildReachableContactsQuery` so the
@@ -135,10 +128,7 @@ export const reachableContactsQuery = (): QueryDefinition =>
     .where({ _id: { $gt: null } })
     .partialIndex({
       trashed: { $or: [{ $eq: false }, { $exists: false }] },
-      $or: [
-        { cozy: { $not: { $size: 0 } } },
-        { email: { $not: { $size: 0 } } }
-      ]
+      $or: [{ cozy: { $not: { $size: 0 } } }, { email: { $not: { $size: 0 } } }]
     })
     .indexFields(['_id'])
     .limitBy(1000)
