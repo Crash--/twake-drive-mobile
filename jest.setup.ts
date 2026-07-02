@@ -5,8 +5,12 @@ if (typeof FormData === 'undefined') {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   ;(global as any).FormData = class FormData {
     private data: Record<string, string> = {}
-    append(key: string, value: string) { this.data[key] = value }
-    get(key: string) { return this.data[key] ?? null }
+    append(key: string, value: string) {
+      this.data[key] = value
+    }
+    get(key: string) {
+      return this.data[key] ?? null
+    }
   }
 }
 
@@ -61,10 +65,15 @@ jest.mock('react-native-mmkv', () => ({
   }))
 }))
 
-jest.mock('@react-native-community/netinfo', () => ({
-  addEventListener: jest.fn(() => () => undefined),
-  fetch: jest.fn().mockResolvedValue({ isConnected: true, isInternetReachable: true })
-}))
+jest.mock('@react-native-community/netinfo', () => {
+  const netInfo = {
+    configure: jest.fn(),
+    addEventListener: jest.fn(() => () => undefined),
+    fetch: jest.fn().mockResolvedValue({ isConnected: true, isInternetReachable: true })
+  }
+  // Expose both the default import (NetInfo.configure) and named exports.
+  return { __esModule: true, default: netInfo, ...netInfo }
+})
 
 // react-native-file-viewer builds a NativeEventEmitter at require() time, which
 // crashes in node. Any component transitively importing it (FileRow → download →
