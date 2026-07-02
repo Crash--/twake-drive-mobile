@@ -21,16 +21,16 @@ Dependencies, lint, and the flagged CVEs are now clean; **lint is blocking**.
 - **Security CVEs (fixed):** `package.json` `overrides` patch `shell-quote`
   (→1.9.0, was CVE-2026-9277 **CRITICAL** RCE), `undici` (→6.27.0,
   CVE-2026-12151 HIGH), and `ws` (per-major →6.2.4/7.5.11/8.21.0,
-  CVE-2026-48779 HIGH). Trivy stays non-blocking only until a CI run confirms
-  zero findings, then drop its `continue-on-error`.
+  CVE-2026-48779 HIGH). A CI run confirmed zero CRITICAL/HIGH findings, so
+  Trivy is now **blocking**.
 - **typecheck (non-blocking):** expo typed-routes reject `"/(drive)/files"`;
   and `scope` is not in cozy-client's `ClientOptions` type (from the
   scoped-OAuth work).
 - **test (non-blocking):** 8 of 356 failing (4 suites, incl.
   `src/auth/useAuth.test.tsx`).
 
-Flip each remaining non-blocking job (typecheck, test, security) to blocking
-once it is green.
+Flip each remaining non-blocking job (typecheck, test) to blocking once it is
+green.
 
 ## Workflows (phase 1)
 
