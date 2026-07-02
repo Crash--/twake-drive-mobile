@@ -178,10 +178,11 @@ export const ICONS: Record<string, CozyIconDef> = {
     viewBox: '0 0 16 16',
     paths: [{ d: 'M8.6 8L4.7 4.1a.948.948 0 01-.275-.7c0-.284.092-.517.275-.7a.948.948 0 01.7-.275c.283 0 .517.091.7.275l4.6 4.6c.1.1.17.208.213.325.041.116.062.241.062.375 0 .133-.02.258-.063.375a.878.878 0 01-.212.325l-4.6 4.6a.948.948 0 01-.7.275.948.948 0 01-.7-.275.948.948 0 01-.275-.7c0-.284.092-.517.275-.7L8.6 8z' }]
   },
-  // dotsVertical — derived from Icons/Dots.js (same geometry rotated: 3 circles stacked vertically)
+  // dotsVertical — 3 circles stacked vertically, radius 1.1 (fine/light kebab; the
+  // original r=2 filled the full viewBox width and read as chunky)
   dotsVertical: {
     viewBox: '0 0 4 16',
-    paths: [{ d: 'M2 0C.9 0 0 .9 0 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zM2 6C.9 6 0 6.9 0 8s.9 2 2 2 2-.9 2-2-.9-2-2-2zM2 12C.9 12 0 12.9 0 14s.9 2 2 2 2-.9 2-2-.9-2-2-2z' }]
+    paths: [{ d: 'M0.9 2a1.1 1.1 0 1 0 2.2 0a1.1 1.1 0 1 0-2.2 0M0.9 8a1.1 1.1 0 1 0 2.2 0a1.1 1.1 0 1 0-2.2 0M0.9 14a1.1 1.1 0 1 0 2.2 0a1.1 1.1 0 1 0-2.2 0' }]
   },
   // cog — source: Icons/Gear.js
   cog: {
