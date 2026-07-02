@@ -24,6 +24,10 @@
   },
   "drive": {
     "myFiles": "Mes fichiers",
+    "myDrive": "Mon Drive",
+    "favorites": "Favoris",
+    "shares": "Partages",
+    "emptyFavorites": "Aucun favori",
     "shared": "Partagés avec moi",
     "sharedDrives": "Drives",
     "recent": "Récents",
