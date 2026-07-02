@@ -40,6 +40,8 @@
     "searchHint": "Search files",
     "searchEmpty": "No results",
     "emptyTrash": "Trash is empty",
+    "sortAZ": "A-Z",
+    "sortZA": "Z-A",
     "fileMeta": {
       "type": "Type",
       "size": "Size",

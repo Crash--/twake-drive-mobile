@@ -1,4 +1,4 @@
-import React, { useCallback, useRef, useState } from 'react'
+import React, { useCallback, useMemo, useRef, useState } from 'react'
 import { FlatList, RefreshControl, StyleSheet, View } from 'react-native'
 import { FAB, Snackbar } from 'react-native-paper'
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router'
@@ -15,6 +15,8 @@ import { FolderRow } from '@/ui/FolderRow'
 import { FileGridItem } from '@/ui/FileGridItem'
 import { ViewSwitcher } from '@/ui/ViewSwitcher'
 import { useViewMode } from '@/ui/useViewMode'
+import { SortControl } from '@/ui/SortControl'
+import { useFolderSort } from '@/ui/useFolderSort'
 import { CreateFolderDialog } from '@/ui/CreateFolderDialog'
 import { CreateOfficeFileDialog } from '@/ui/CreateOfficeFileDialog'
 import { ConfirmDeleteDialog } from '@/ui/ConfirmDeleteDialog'
@@ -69,6 +71,7 @@ export default function FilesScreen() {
   const [deleting, setDeleting] = useState(false)
   const [snackbar, setSnackbar] = useState<string | null>(null)
   const { mode } = useViewMode()
+  const { sort } = useFolderSort()
   const selection = useMultiSelect()
   const offlineActions = useOfflineActions()
   const onToggleFilePin = useCallback(
@@ -337,7 +340,13 @@ export default function FilesScreen() {
   const fileDocs = (filesQuery.data as FileQueryResult[] | null | undefined) ?? []
   // shared-drives-dir + trash-dir are already filtered server-side by
   // buildDriveQuery (see src/client/queries.ts).
-  const data = [...folderDocs, ...fileDocs]
+  // Sort within each group (folders / files) separately to preserve grouping.
+  const data = useMemo(() => {
+    const dir = sort.dir === 'asc' ? 1 : -1
+    const sorted = (arr: FileQueryResult[]) =>
+      [...arr].sort((a, b) => dir * a.name.localeCompare(b.name, undefined, { sensitivity: 'base' }))
+    return [...sorted(folderDocs), ...sorted(fileDocs)]
+  }, [folderDocs, fileDocs, sort.dir])
 
   const fabActions = [
     {
@@ -415,6 +424,7 @@ export default function FilesScreen() {
         }
       />
       <View style={styles.toolbar}>
+        <SortControl />
         <ViewSwitcher />
       </View>
       {(foldersQuery.fetchStatus === 'loading' || filesQuery.fetchStatus === 'loading') &&
