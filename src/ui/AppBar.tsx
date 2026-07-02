@@ -1,8 +1,10 @@
 import React, { useState } from 'react'
+import { StyleSheet, View } from 'react-native'
 import { Appbar, Menu } from 'react-native-paper'
 import { useTranslation } from 'react-i18next'
 
 import { SyncIndicator } from './SyncIndicator'
+import { TwakeLogo } from '@/ui/icons/TwakeLogo'
 
 export interface AppBarSelectionAction {
   icon: string
@@ -63,6 +65,9 @@ export const AppBar = ({ title, onBack, onLogout, selection }: Props) => {
   return (
     <Appbar.Header>
       {onBack ? <Appbar.BackAction onPress={onBack} /> : null}
+      <View style={styles.logo}>
+        <TwakeLogo size={28} />
+      </View>
       <Appbar.Content title={title} />
       <SyncIndicator />
       {onLogout ? (
@@ -83,3 +88,11 @@ export const AppBar = ({ title, onBack, onLogout, selection }: Props) => {
     </Appbar.Header>
   )
 }
+
+const styles = StyleSheet.create({
+  logo: {
+    marginLeft: 4,
+    marginRight: 4,
+    justifyContent: 'center',
+  },
+})
