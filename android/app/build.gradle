@@ -193,4 +193,8 @@ dependencies {
     testImplementation("org.robolectric:robolectric:4.14.1")
     testImplementation("com.squareup.okhttp3:mockwebserver:4.12.0")
     testImplementation("org.jetbrains.kotlin:kotlin-test-junit")
+    // Real org.json implementation for plain (non-Robolectric) unit tests: the Android
+    // stub/mockable jar throws "not mocked" for JSONObject/JSONArray methods, which
+    // CozyStackApi and CozyFile rely on for parsing cozy-stack responses.
+    testImplementation("org.json:json:20260522")
 }
