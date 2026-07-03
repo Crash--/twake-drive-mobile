@@ -36,23 +36,43 @@ object DocumentMapper {
         return flags
     }
 
+    // Only populate the columns the caller actually requested. MatrixCursor's
+    // add(columnName, value) THROWS on a column absent from the cursor's
+    // projection, and SAF consumers (e.g. Gmail) query with a minimal
+    // projection like [DISPLAY_NAME, SIZE] — adding every column unconditionally
+    // would crash queryDocument and surface as "undefined" in the picker.
+    private fun fill(cursor: MatrixCursor, values: Map<String, Any?>) {
+        val row = cursor.newRow()
+        for (col in cursor.columnNames) {
+            if (values.containsKey(col)) row.add(col, values[col])
+        }
+    }
+
     fun addFileRow(cursor: MatrixCursor, f: CozyFile) {
-        cursor.newRow()
-            .add(Document.COLUMN_DOCUMENT_ID, f.id)
-            .add(Document.COLUMN_DISPLAY_NAME, f.name)
-            .add(Document.COLUMN_MIME_TYPE, mimeOf(f))
-            .add(Document.COLUMN_FLAGS, flagsFor(f))
-            .add(Document.COLUMN_SIZE, f.size)
-            .add(Document.COLUMN_LAST_MODIFIED, if (f.updatedAt > 0) f.updatedAt else null)
+        fill(
+            cursor,
+            mapOf(
+                Document.COLUMN_DOCUMENT_ID to f.id,
+                Document.COLUMN_DISPLAY_NAME to f.name,
+                Document.COLUMN_MIME_TYPE to mimeOf(f),
+                Document.COLUMN_FLAGS to flagsFor(f),
+                Document.COLUMN_SIZE to f.size,
+                Document.COLUMN_LAST_MODIFIED to if (f.updatedAt > 0) f.updatedAt else null
+            )
+        )
     }
 
     fun addRootRow(cursor: MatrixCursor, domain: String) {
-        cursor.newRow()
-            .add(Root.COLUMN_ROOT_ID, ROOT_ID)
-            .add(Root.COLUMN_DOCUMENT_ID, ROOT_DOC_ID)
-            .add(Root.COLUMN_TITLE, "Twake Drive")
-            .add(Root.COLUMN_SUMMARY, domain)
-            .add(Root.COLUMN_FLAGS, Root.FLAG_SUPPORTS_CREATE or Root.FLAG_SUPPORTS_IS_CHILD)
-            .add(Root.COLUMN_ICON, com.linagora.twakedrive.R.mipmap.ic_launcher)
+        fill(
+            cursor,
+            mapOf(
+                Root.COLUMN_ROOT_ID to ROOT_ID,
+                Root.COLUMN_DOCUMENT_ID to ROOT_DOC_ID,
+                Root.COLUMN_TITLE to "Twake Drive",
+                Root.COLUMN_SUMMARY to domain,
+                Root.COLUMN_FLAGS to (Root.FLAG_SUPPORTS_CREATE or Root.FLAG_SUPPORTS_IS_CHILD),
+                Root.COLUMN_ICON to com.linagora.twakedrive.R.mipmap.ic_launcher
+            )
+        )
     }
 }

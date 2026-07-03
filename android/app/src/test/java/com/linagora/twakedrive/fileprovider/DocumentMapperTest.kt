@@ -49,4 +49,16 @@ class DocumentMapperTest {
         assertEquals("id1", c.getString(c.getColumnIndex(Document.COLUMN_DOCUMENT_ID)))
         assertEquals("n", c.getString(c.getColumnIndex(Document.COLUMN_DISPLAY_NAME)))
     }
+
+    // Regression: a SAF consumer (e.g. Gmail) queries with a minimal projection.
+    // addFileRow must fill ONLY the requested columns — adding a column absent
+    // from the cursor throws and made Gmail show "undefined".
+    @Test fun `addFileRow respects a minimal projection without throwing`() {
+        val c = MatrixCursor(arrayOf(Document.COLUMN_DISPLAY_NAME, Document.COLUMN_SIZE))
+        DocumentMapper.addFileRow(c, file(isDir = false, mime = "application/pdf"))
+        c.moveToFirst()
+        assertEquals("n", c.getString(c.getColumnIndex(Document.COLUMN_DISPLAY_NAME)))
+        assertEquals(42L, c.getLong(c.getColumnIndex(Document.COLUMN_SIZE)))
+        assertEquals(-1, c.getColumnIndex(Document.COLUMN_MIME_TYPE)) // not requested → absent
+    }
 }
