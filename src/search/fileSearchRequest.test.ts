@@ -1,27 +1,43 @@
-import { buildFileSearchFindRequest, FILE_SEARCH_LIMIT } from './fileSearchRequest'
+import { buildFilePageFindRequest, FILE_SEARCH_PAGE_SIZE } from './fileSearchRequest'
 
-describe('buildFileSearchFindRequest', () => {
-  it('builds a case-insensitive $regex selector for the stack _find', () => {
-    const req = buildFileSearchFindRequest('report')
-    expect(typeof req.selector.name.$regex).toBe('string')
-    expect(new RegExp(req.selector.name.$regex).test('Q3 REPORT.pdf')).toBe(true)
-    expect(new RegExp(req.selector.name.$regex).test('q3 report.pdf')).toBe(true)
-    expect(req.selector.trashed).toBe(false)
-    expect(req.limit).toBe(FILE_SEARCH_LIMIT)
+describe('buildFilePageFindRequest', () => {
+  it('uses the name-index sentinel selector', () => {
+    const req = buildFilePageFindRequest()
+    // $gt: null on `name` is the sentinel that tells cozy-stack to use the name index
+    expect(req.selector).toEqual({ name: { $gt: null } })
   })
 
-  it('escapes regex metacharacters from user input', () => {
-    const req = buildFileSearchFindRequest('a.b')
-    expect(new RegExp(req.selector.name.$regex).test('axb')).toBe(false)
-    expect(new RegExp(req.selector.name.$regex).test('a.b')).toBe(true)
+  it('does not send a sort (cozy-stack rejects sort:[{name:asc}] with no_usable_index)', () => {
+    const req = buildFilePageFindRequest()
+    // The instance's `name` index serves the selector but not an explicit sort;
+    // bookmark pagination needs none, and the caller sorts matches client-side.
+    expect(req).not.toHaveProperty('sort')
   })
 
-  // The request is JSON-serialized onto the wire to the stack — the $regex must
-  // survive intact (a RegExp object would become {} and match nothing).
-  it('produces a JSON-serializable request', () => {
-    const req = buildFileSearchFindRequest('report')
+  it('requests the right page size', () => {
+    const req = buildFilePageFindRequest()
+    expect(req.limit).toBe(FILE_SEARCH_PAGE_SIZE)
+  })
+
+  it('includes the trashed field so the client can filter it', () => {
+    const req = buildFilePageFindRequest()
+    expect(req.fields).toContain('trashed')
+  })
+
+  it('includes no bookmark when called without argument', () => {
+    const req = buildFilePageFindRequest()
+    expect(req.bookmark).toBeUndefined()
+  })
+
+  it('passes a bookmark through for the next page', () => {
+    const req = buildFilePageFindRequest('cursor-abc')
+    expect(req.bookmark).toBe('cursor-abc')
+  })
+
+  it('produces a JSON-serializable request (bookmark survives round-trip)', () => {
+    const req = buildFilePageFindRequest('cursor-xyz')
     const roundTripped = JSON.parse(JSON.stringify(req)) as typeof req
-    expect(roundTripped.selector.name.$regex).toBe(req.selector.name.$regex)
-    expect(new RegExp(roundTripped.selector.name.$regex).test('Q3 REPORT.pdf')).toBe(true)
+    expect(roundTripped.bookmark).toBe('cursor-xyz')
+    expect(roundTripped.selector).toEqual({ name: { $gt: null } })
   })
 })
