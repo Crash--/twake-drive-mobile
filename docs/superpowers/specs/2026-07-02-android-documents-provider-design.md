@@ -1,6 +1,6 @@
 # Android DocumentsProvider — browse & edit the Drive from any app
 
-> **Status:** spec draft, pending user review. Next step: `superpowers:writing-plans` to produce the implementation plan.
+> **Status:** implemented (T1–T10) on `feat/android-documents-provider`; unit-tested + per-task reviewed; local CI-equivalent gates green (lint / typecheck / jest 365 / `assembleRelease`). On-device QA pending. PR targets `feat/android-support`.
 >
 > **Branch / worktree:** `feat/android-documents-provider` at
 > `../twake-drive-mobile-fileprovider`, based on `feat/android-support`.
