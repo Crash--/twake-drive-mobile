@@ -1,13 +1,15 @@
 import React, { useEffect, useState } from 'react'
 import { StyleSheet } from 'react-native'
 import { WebView } from 'react-native-webview'
-import { useLocalSearchParams } from 'expo-router'
+import { useLocalSearchParams, useRouter } from 'expo-router'
 import { useClient } from 'cozy-client'
 
 import { ScreenContainer } from '@/ui/ScreenContainer'
+import { EditorHeader } from '@/ui/EditorHeader'
 import { ErrorState } from '@/ui/ErrorState'
 import { LoadingState } from '@/ui/LoadingState'
-import { buildCozyAppUrl, getSessionCode } from '@/files/cozyAppLink'
+import { buildCozyAppUrl } from '@/files/cozyAppLink'
+import { useSessionCode } from '@/auth/useSessionCode'
 
 // Mirrors twake-drive web's CreateDocsItem flow: redirect the user to the
 // cozy `docs` web app with the route `/bridge/docs/new/<folderId>`. The
@@ -18,6 +20,8 @@ import { buildCozyAppUrl, getSessionCode } from '@/files/cozyAppLink'
 export default function DocsNewScreen() {
   const { folderId } = useLocalSearchParams<{ folderId: string }>()
   const client = useClient()
+  const router = useRouter()
+  const fetchSessionCode = useSessionCode()
   const [editorUrl, setEditorUrl] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [reloadTick, setReloadTick] = useState(0)
@@ -28,7 +32,7 @@ export default function DocsNewScreen() {
       if (!client || !folderId) return
       try {
         const stackUri = client.getStackClient().uri as string
-        const sessionCode = await getSessionCode(client)
+        const sessionCode = await fetchSessionCode()
         const url = buildCozyAppUrl(stackUri, 'docs', sessionCode, `/bridge/docs/new/${folderId}`)
         console.log('[DocsNewScreen] editorUrl', url)
         if (!cancelled) setEditorUrl(url)
@@ -41,10 +45,11 @@ export default function DocsNewScreen() {
     return () => {
       cancelled = true
     }
-  }, [client, folderId, reloadTick])
+  }, [client, folderId, reloadTick, fetchSessionCode])
 
   return (
     <ScreenContainer>
+      <EditorHeader onBack={() => router.back()} />
       {error ? (
         <ErrorState
           message={error}
