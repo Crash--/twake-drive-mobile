@@ -1,12 +1,14 @@
 import React, { useEffect, useState } from 'react'
 import { StyleSheet } from 'react-native'
 import { WebView } from 'react-native-webview'
-import { useLocalSearchParams } from 'expo-router'
-import { useClient } from 'cozy-client'
+import { useLocalSearchParams, useRouter } from 'expo-router'
+import { useClient, useQuery } from 'cozy-client'
 
 import { ScreenContainer } from '@/ui/ScreenContainer'
+import { EditorHeader } from '@/ui/EditorHeader'
 import { ErrorState } from '@/ui/ErrorState'
 import { LoadingState } from '@/ui/LoadingState'
+import { fileByIdQuery, fileByIdQueryAs } from '@/client/queries'
 import { useSessionCode } from '@/auth/useSessionCode'
 
 // TODO(backend): cozy-stack returns 403 Forbidden on `GET /office/{id}/open`
@@ -34,10 +36,18 @@ const buildDriveOnlyOfficeUrl = (stackUri: string, fileId: string, sessionCode: 
 export default function OnlyOfficeScreen() {
   const { fileId } = useLocalSearchParams<{ fileId: string }>()
   const client = useClient()
+  const router = useRouter()
   const fetchSessionCode = useSessionCode()
   const [editorUrl, setEditorUrl] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [reloadTick, setReloadTick] = useState(0)
+
+  const fileLookup = useQuery(fileByIdQuery(fileId ?? ''), {
+    as: fileByIdQueryAs(fileId ?? ''),
+    enabled: !!fileId
+  })
+  const doc = Array.isArray(fileLookup.data) ? fileLookup.data[0] : fileLookup.data
+  const documentTitle = (doc as { name?: string })?.name ?? ''
 
   useEffect(() => {
     let cancelled = false
@@ -61,7 +71,8 @@ export default function OnlyOfficeScreen() {
   }, [client, fileId, reloadTick, fetchSessionCode])
 
   return (
-    <ScreenContainer safeTop>
+    <ScreenContainer>
+      <EditorHeader title={documentTitle} onBack={() => router.back()} />
       {error ? (
         <ErrorState
           message={error}

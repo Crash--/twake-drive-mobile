@@ -1,10 +1,11 @@
 import React, { useEffect, useState } from 'react'
 import { StyleSheet } from 'react-native'
 import { WebView } from 'react-native-webview'
-import { useLocalSearchParams } from 'expo-router'
+import { useLocalSearchParams, useRouter } from 'expo-router'
 import { useClient } from 'cozy-client'
 
 import { ScreenContainer } from '@/ui/ScreenContainer'
+import { EditorHeader } from '@/ui/EditorHeader'
 import { ErrorState } from '@/ui/ErrorState'
 import { LoadingState } from '@/ui/LoadingState'
 import { buildCozyAppUrl } from '@/files/cozyAppLink'
@@ -19,6 +20,7 @@ import { useSessionCode } from '@/auth/useSessionCode'
 export default function DocsNewScreen() {
   const { folderId } = useLocalSearchParams<{ folderId: string }>()
   const client = useClient()
+  const router = useRouter()
   const fetchSessionCode = useSessionCode()
   const [editorUrl, setEditorUrl] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -46,7 +48,8 @@ export default function DocsNewScreen() {
   }, [client, folderId, reloadTick, fetchSessionCode])
 
   return (
-    <ScreenContainer safeTop>
+    <ScreenContainer>
+      <EditorHeader title="Nouveau document" onBack={() => router.back()} />
       {error ? (
         <ErrorState
           message={error}

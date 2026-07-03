@@ -1,10 +1,11 @@
 import React, { useEffect, useState } from 'react'
 import { StyleSheet } from 'react-native'
 import { WebView } from 'react-native-webview'
-import { useLocalSearchParams } from 'expo-router'
+import { useLocalSearchParams, useRouter } from 'expo-router'
 import { useClient, useQuery } from 'cozy-client'
 
 import { ScreenContainer } from '@/ui/ScreenContainer'
+import { EditorHeader } from '@/ui/EditorHeader'
 import { ErrorState } from '@/ui/ErrorState'
 import { LoadingState } from '@/ui/LoadingState'
 import { fileByIdQuery, fileByIdQueryAs } from '@/client/queries'
@@ -23,6 +24,7 @@ import { useSessionCode } from '@/auth/useSessionCode'
 export default function DocsScreen() {
   const { fileId } = useLocalSearchParams<{ fileId: string }>()
   const client = useClient()
+  const router = useRouter()
   const fetchSessionCode = useSessionCode()
   const [editorUrl, setEditorUrl] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -36,6 +38,7 @@ export default function DocsScreen() {
   const lookupDoc = Array.isArray(lookupData) ? lookupData[0] : lookupData
   const externalId = (lookupDoc as { metadata?: { externalId?: string } } | null | undefined)
     ?.metadata?.externalId
+  const documentTitle = (lookupDoc as { name?: string } | null | undefined)?.name ?? ''
 
   useEffect(() => {
     let cancelled = false
@@ -62,7 +65,8 @@ export default function DocsScreen() {
   const missingExternalId = fileLookup.fetchStatus === 'loaded' && !!lookupDoc && !externalId
 
   return (
-    <ScreenContainer safeTop>
+    <ScreenContainer>
+      <EditorHeader title={documentTitle} onBack={() => router.back()} />
       {error ? (
         <ErrorState
           message={error}
