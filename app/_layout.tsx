@@ -9,6 +9,7 @@ import { Stack } from 'expo-router'
 import { StatusBar } from 'expo-status-bar'
 import { CozyProvider } from 'cozy-client'
 import { I18nextProvider } from 'react-i18next'
+import { ShareIntentProvider } from 'expo-share-intent'
 
 import {
   useFonts,
@@ -26,6 +27,7 @@ import { attachRevocationListener } from '@/auth/revocationListener'
 import { ErrorBoundary } from '@/ui/ErrorBoundary'
 import { PiPSessionProvider } from '@/preview/PiPSession'
 import { SharingProvider } from '@/sharing/SharingProvider'
+import { PendingShareProvider } from '@/share/PendingShareProvider'
 
 const InnerLayout = () => {
   const colorScheme = useColorScheme()
@@ -59,53 +61,59 @@ const InnerLayout = () => {
           <I18nextProvider i18n={i18n}>
             <PiPSessionProvider>
               <SharingProvider>
-                <ErrorBoundary>
-                  <Stack screenOptions={{ headerShown: false }}>
-                    <Stack.Screen name="(auth)" />
-                    <Stack.Screen name="(drive)" />
-                    <Stack.Screen name="index" />
-                    <Stack.Screen
-                      name="preview/[fileId]"
-                      options={{
-                        // Native iOS pageSheet: rounded-corner modal that
-                        // the OS lets the user drag down to dismiss,
-                        // coordinated with any inner UIScrollView (PDF,
-                        // text). Works for every preview kind for free.
-                        presentation: 'pageSheet',
-                        animation: 'slide_from_bottom'
-                      }}
-                    />
-                    <Stack.Screen
-                      name="metadata/[fileId]"
-                      options={{ presentation: 'pageSheet', animation: 'slide_from_bottom' }}
-                    />
-                    <Stack.Screen
-                      name="share/[fileId]"
-                      options={{ presentation: 'pageSheet', animation: 'slide_from_bottom' }}
-                    />
-                    <Stack.Screen
-                      name="move/[ids]"
-                      options={{ presentation: 'pageSheet', animation: 'slide_from_bottom' }}
-                    />
-                    <Stack.Screen
-                      name="onlyoffice/[fileId]"
-                      options={{ presentation: 'pageSheet', animation: 'slide_from_bottom' }}
-                    />
-                    <Stack.Screen
-                      name="note/[fileId]"
-                      options={{ presentation: 'pageSheet', animation: 'slide_from_bottom' }}
-                    />
-                    <Stack.Screen
-                      name="docs/[fileId]"
-                      options={{ presentation: 'pageSheet', animation: 'slide_from_bottom' }}
-                    />
-                    <Stack.Screen
-                      name="docs/new/[folderId]"
-                      options={{ presentation: 'pageSheet', animation: 'slide_from_bottom' }}
-                    />
-                    <Stack.Screen name="search" options={{ animation: 'slide_from_bottom' }} />
-                  </Stack>
-                </ErrorBoundary>
+                <PendingShareProvider>
+                  <ErrorBoundary>
+                    <Stack screenOptions={{ headerShown: false }}>
+                      <Stack.Screen name="(auth)" />
+                      <Stack.Screen name="(drive)" />
+                      <Stack.Screen name="index" />
+                      <Stack.Screen
+                        name="preview/[fileId]"
+                        options={{
+                          // Native iOS pageSheet: rounded-corner modal that
+                          // the OS lets the user drag down to dismiss,
+                          // coordinated with any inner UIScrollView (PDF,
+                          // text). Works for every preview kind for free.
+                          presentation: 'pageSheet',
+                          animation: 'slide_from_bottom'
+                        }}
+                      />
+                      <Stack.Screen
+                        name="metadata/[fileId]"
+                        options={{ presentation: 'pageSheet', animation: 'slide_from_bottom' }}
+                      />
+                      <Stack.Screen
+                        name="share/[fileId]"
+                        options={{ presentation: 'pageSheet', animation: 'slide_from_bottom' }}
+                      />
+                      <Stack.Screen
+                        name="move/[ids]"
+                        options={{ presentation: 'pageSheet', animation: 'slide_from_bottom' }}
+                      />
+                      <Stack.Screen
+                        name="import"
+                        options={{ presentation: 'pageSheet', animation: 'slide_from_bottom' }}
+                      />
+                      <Stack.Screen
+                        name="onlyoffice/[fileId]"
+                        options={{ presentation: 'pageSheet', animation: 'slide_from_bottom' }}
+                      />
+                      <Stack.Screen
+                        name="note/[fileId]"
+                        options={{ presentation: 'pageSheet', animation: 'slide_from_bottom' }}
+                      />
+                      <Stack.Screen
+                        name="docs/[fileId]"
+                        options={{ presentation: 'pageSheet', animation: 'slide_from_bottom' }}
+                      />
+                      <Stack.Screen
+                        name="docs/new/[folderId]"
+                        options={{ presentation: 'pageSheet', animation: 'slide_from_bottom' }}
+                      />
+                      <Stack.Screen name="search" options={{ animation: 'slide_from_bottom' }} />
+                    </Stack>
+                  </ErrorBoundary>
+                </PendingShareProvider>
               </SharingProvider>
             </PiPSessionProvider>
           </I18nextProvider>
@@ -119,8 +127,10 @@ const InnerLayout = () => {
 
 export default function RootLayout() {
   return (
-    <AuthProvider>
-      <InnerLayout />
-    </AuthProvider>
+    <ShareIntentProvider>
+      <AuthProvider>
+        <InnerLayout />
+      </AuthProvider>
+    </ShareIntentProvider>
   )
 }
