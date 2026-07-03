@@ -57,8 +57,7 @@
         }
       ],
       "./plugins/withTwakeDocumentsProvider",
-      "./plugins/withTwakeShareIntent",
-      "expo-share-intent"
+      "./plugins/withTwakeShareIntent"
     ],
     "experiments": {
       "typedRoutes": true
