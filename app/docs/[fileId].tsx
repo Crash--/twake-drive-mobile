@@ -62,7 +62,7 @@ export default function DocsScreen() {
   const missingExternalId = fileLookup.fetchStatus === 'loaded' && !!lookupDoc && !externalId
 
   return (
-    <ScreenContainer>
+    <ScreenContainer safeTop>
       {error ? (
         <ErrorState
           message={error}

@@ -46,7 +46,7 @@ export default function DocsNewScreen() {
   }, [client, folderId, reloadTick, fetchSessionCode])
 
   return (
-    <ScreenContainer>
+    <ScreenContainer safeTop>
       {error ? (
         <ErrorState
           message={error}

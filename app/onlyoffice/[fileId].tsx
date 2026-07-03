@@ -61,7 +61,7 @@ export default function OnlyOfficeScreen() {
   }, [client, fileId, reloadTick, fetchSessionCode])
 
   return (
-    <ScreenContainer>
+    <ScreenContainer safeTop>
       {error ? (
         <ErrorState
           message={error}

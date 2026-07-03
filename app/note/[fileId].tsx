@@ -45,7 +45,7 @@ export default function CozyNoteScreen() {
   }, [client, fileId, reloadTick, fetchSessionCode])
 
   return (
-    <ScreenContainer>
+    <ScreenContainer safeTop>
       {error ? (
         <ErrorState
           message={error}
