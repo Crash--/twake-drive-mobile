@@ -9,7 +9,6 @@ import { Stack } from 'expo-router'
 import { StatusBar } from 'expo-status-bar'
 import { CozyProvider } from 'cozy-client'
 import { I18nextProvider } from 'react-i18next'
-import { ShareIntentProvider } from 'expo-share-intent'
 
 import {
   useFonts,
@@ -61,59 +60,57 @@ const InnerLayout = () => {
           <I18nextProvider i18n={i18n}>
             <PiPSessionProvider>
               <SharingProvider>
-                <PendingShareProvider>
-                  <ErrorBoundary>
-                    <Stack screenOptions={{ headerShown: false }}>
-                      <Stack.Screen name="(auth)" />
-                      <Stack.Screen name="(drive)" />
-                      <Stack.Screen name="index" />
-                      <Stack.Screen
-                        name="preview/[fileId]"
-                        options={{
-                          // Native iOS pageSheet: rounded-corner modal that
-                          // the OS lets the user drag down to dismiss,
-                          // coordinated with any inner UIScrollView (PDF,
-                          // text). Works for every preview kind for free.
-                          presentation: 'pageSheet',
-                          animation: 'slide_from_bottom'
-                        }}
-                      />
-                      <Stack.Screen
-                        name="metadata/[fileId]"
-                        options={{ presentation: 'pageSheet', animation: 'slide_from_bottom' }}
-                      />
-                      <Stack.Screen
-                        name="share/[fileId]"
-                        options={{ presentation: 'pageSheet', animation: 'slide_from_bottom' }}
-                      />
-                      <Stack.Screen
-                        name="move/[ids]"
-                        options={{ presentation: 'pageSheet', animation: 'slide_from_bottom' }}
-                      />
-                      <Stack.Screen
-                        name="import"
-                        options={{ presentation: 'pageSheet', animation: 'slide_from_bottom' }}
-                      />
-                      <Stack.Screen
-                        name="onlyoffice/[fileId]"
-                        options={{ presentation: 'pageSheet', animation: 'slide_from_bottom' }}
-                      />
-                      <Stack.Screen
-                        name="note/[fileId]"
-                        options={{ presentation: 'pageSheet', animation: 'slide_from_bottom' }}
-                      />
-                      <Stack.Screen
-                        name="docs/[fileId]"
-                        options={{ presentation: 'pageSheet', animation: 'slide_from_bottom' }}
-                      />
-                      <Stack.Screen
-                        name="docs/new/[folderId]"
-                        options={{ presentation: 'pageSheet', animation: 'slide_from_bottom' }}
-                      />
-                      <Stack.Screen name="search" options={{ animation: 'slide_from_bottom' }} />
-                    </Stack>
-                  </ErrorBoundary>
-                </PendingShareProvider>
+                <ErrorBoundary>
+                  <Stack screenOptions={{ headerShown: false }}>
+                    <Stack.Screen name="(auth)" />
+                    <Stack.Screen name="(drive)" />
+                    <Stack.Screen name="index" />
+                    <Stack.Screen
+                      name="preview/[fileId]"
+                      options={{
+                        // Native iOS pageSheet: rounded-corner modal that
+                        // the OS lets the user drag down to dismiss,
+                        // coordinated with any inner UIScrollView (PDF,
+                        // text). Works for every preview kind for free.
+                        presentation: 'pageSheet',
+                        animation: 'slide_from_bottom'
+                      }}
+                    />
+                    <Stack.Screen
+                      name="metadata/[fileId]"
+                      options={{ presentation: 'pageSheet', animation: 'slide_from_bottom' }}
+                    />
+                    <Stack.Screen
+                      name="share/[fileId]"
+                      options={{ presentation: 'pageSheet', animation: 'slide_from_bottom' }}
+                    />
+                    <Stack.Screen
+                      name="move/[ids]"
+                      options={{ presentation: 'pageSheet', animation: 'slide_from_bottom' }}
+                    />
+                    <Stack.Screen
+                      name="import"
+                      options={{ presentation: 'pageSheet', animation: 'slide_from_bottom' }}
+                    />
+                    <Stack.Screen
+                      name="onlyoffice/[fileId]"
+                      options={{ presentation: 'pageSheet', animation: 'slide_from_bottom' }}
+                    />
+                    <Stack.Screen
+                      name="note/[fileId]"
+                      options={{ presentation: 'pageSheet', animation: 'slide_from_bottom' }}
+                    />
+                    <Stack.Screen
+                      name="docs/[fileId]"
+                      options={{ presentation: 'pageSheet', animation: 'slide_from_bottom' }}
+                    />
+                    <Stack.Screen
+                      name="docs/new/[folderId]"
+                      options={{ presentation: 'pageSheet', animation: 'slide_from_bottom' }}
+                    />
+                    <Stack.Screen name="search" options={{ animation: 'slide_from_bottom' }} />
+                  </Stack>
+                </ErrorBoundary>
               </SharingProvider>
             </PiPSessionProvider>
           </I18nextProvider>
@@ -122,15 +119,25 @@ const InnerLayout = () => {
     </SafeAreaProvider>
   )
 
-  return client ? <CozyProvider client={client}>{content}</CozyProvider> : content
+  // PendingShareProvider wraps the ENTIRE client conditional (rather than
+  // living inside `content`) so its position in the tree never changes when
+  // `client` flips null -> object. That transition happens on every login
+  // and even on cold start with a saved session (see useAuth's bootstrap
+  // effect) — if PendingShareProvider sat inside `content`, the element type
+  // at this return position would change (SafeAreaProvider <-> CozyProvider),
+  // forcing React to unmount/remount the whole subtree and wipe the staged
+  // share before it could be resumed after login.
+  return (
+    <PendingShareProvider>
+      {client ? <CozyProvider client={client}>{content}</CozyProvider> : content}
+    </PendingShareProvider>
+  )
 }
 
 export default function RootLayout() {
   return (
-    <ShareIntentProvider>
-      <AuthProvider>
-        <InnerLayout />
-      </AuthProvider>
-    </ShareIntentProvider>
+    <AuthProvider>
+      <InnerLayout />
+    </AuthProvider>
   )
 }

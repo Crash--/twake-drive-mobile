@@ -42,6 +42,13 @@ export default function ImportLayout({ children }: { children?: React.ReactNode 
     if (router.canGoBack()) router.back()
   }, [router])
 
+  // Declining the import must also drop the staged share — otherwise `pending`
+  // stays populated and a later client/pending effect re-pop `/import` again.
+  const onCancel = useCallback((): void => {
+    clear()
+    close()
+  }, [clear, close])
+
   const onConfirm = useCallback(
     async (dest: { _id: string; name: string }): Promise<void> => {
       if (!client || items.length === 0) return
@@ -81,8 +88,8 @@ export default function ImportLayout({ children }: { children?: React.ReactNode 
   )
 
   const value = useMemo<ImportContextValue>(
-    () => ({ items, isBusy, onConfirm, onCancel: close }),
-    [items, isBusy, onConfirm, close]
+    () => ({ items, isBusy, onConfirm, onCancel }),
+    [items, isBusy, onConfirm, onCancel]
   )
 
   return (
