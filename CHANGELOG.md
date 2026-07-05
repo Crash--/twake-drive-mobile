@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.1] - 2026-07-05
+
+### Fixed
+
+- **Flagship certification loop on mobile** — the first-time "application not
+  certified" screen emails a 6-digit code, but leaving to the mail app to read it
+  dismissed the certification tab and bounced back to the email screen, an
+  inescapable loop on a mobile-only device. The tab now survives the app switch (a
+  plain Custom Tab plus `cozy://` deep-link capture instead of an auth session).
+
+### Changed
+
+- iOS releases attach the signed IPA to the tag's GitHub Release, at parity with
+  the Android APK. A new `provision-ios` workflow provisions match signing profiles
+  for new app extensions (used to wire the File Provider extension's signing).
+
 ## [0.2.0] - 2026-07-05
 
 First feature release. 0.1.0 was a read-only proof of concept; 0.2.0 turns Twake
@@ -74,5 +90,6 @@ seven languages.
   Provider extension (App Group + `match` profile) before TestFlight uploads
   succeed; Android 0.2.0 ships to Firebase App Distribution.
 
-[Unreleased]: https://github.com/mmaudet/twake-drive-mobile/compare/v0.2.0...HEAD
+[Unreleased]: https://github.com/mmaudet/twake-drive-mobile/compare/v0.2.1...HEAD
+[0.2.1]: https://github.com/mmaudet/twake-drive-mobile/compare/v0.2.0...v0.2.1
 [0.2.0]: https://github.com/mmaudet/twake-drive-mobile/releases/tag/v0.2.0
