@@ -10,7 +10,16 @@
     "help": "Aide"
   },
   "settings": {
-    "title": "Paramètres"
+    "title": "Paramètres",
+    "account": "Compte",
+    "language": "Langue",
+    "systemLanguage": "Système (langue de l'appareil)",
+    "theme": "Thème",
+    "themeSystem": "Système",
+    "themeLight": "Clair",
+    "themeDark": "Sombre",
+    "about": "À propos",
+    "version": "Version"
   },
   "auth": {
     "welcomeTitle": "Bienvenue sur Twake Drive",
@@ -30,7 +39,7 @@
     "shares": "Partages",
     "emptyFavorites": "Aucun favori",
     "shared": "Partagés avec moi",
-    "sharedDrives": "Drives",
+    "sharedDrives": "Espaces partagés",
     "recent": "Récents",
     "trash": "Corbeille",
     "emptyFolder": "Aucun fichier dans ce dossier",

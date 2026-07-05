@@ -10,7 +10,16 @@
     "help": "Help"
   },
   "settings": {
-    "title": "Settings"
+    "title": "Settings",
+    "account": "Account",
+    "language": "Language",
+    "systemLanguage": "System (device language)",
+    "theme": "Theme",
+    "themeSystem": "System",
+    "themeLight": "Light",
+    "themeDark": "Dark",
+    "about": "About",
+    "version": "Version"
   },
   "auth": {
     "welcomeTitle": "Welcome to Twake Drive",
