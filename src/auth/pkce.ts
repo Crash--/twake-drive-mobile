@@ -33,36 +33,43 @@ export const normalizeRedirectUrl = (raw: string): string => {
 
 export const openAuthorizeUrl = async (url: string): Promise<string> => {
   console.log('[auth] opening authorize URL', url)
-  // `cozy://` is a registered app deep-link scheme, so on Android the OAuth
-  // redirect reopens MainActivity and openAuthSessionAsync resolves
-  // `{type:'dismiss'}` instead of capturing the URL — the auth code is lost.
-  // But the running app DOES receive that deep link, so we listen for it via
-  // Linking as a fallback and use whichever source yields the redirect first.
-  let received: string | null = null
-  const sub = Linking.addEventListener('url', ({ url: incoming }) => {
-    if (incoming && incoming.startsWith('cozy:')) received = incoming
-  })
-  try {
-    const result = await WebBrowser.openAuthSessionAsync(url, REDIRECT_URL, {
-      showInRecents: false
-    })
-    console.log('[auth] authorize result', JSON.stringify(result))
-    let redirectUrl: string | null = result.type === 'success' && result.url ? result.url : null
-    if (!redirectUrl) {
-      // Dismissed: the redirect most likely reached the app through Linking.
-      // Give the deep-link event up to ~2s to arrive before giving up.
-      for (let i = 0; i < 20 && !received; i++) {
-        await new Promise(resolve => setTimeout(resolve, 100))
+  // The flagship certification page emails a 6-digit code, so the user MUST leave
+  // to their mail app and come back to type it. `openAuthSessionAsync` resolves
+  // `{type:'dismiss'}` the instant the app is refocused, which aborts the flow and
+  // bounces the user back to the start — an inescapable loop on a mobile-only
+  // device. A plain Custom Tab (`openBrowserAsync`) survives that excursion: it
+  // stays open while the user reads the code. The cert finishes by redirecting to
+  // `cozy://`, which reopens the app and fires a Linking `url` event — that deep
+  // link is the reliable completion signal (openBrowserAsync never returns the
+  // redirect URL itself). `showInRecents` keeps the tab in the app switcher so the
+  // user can return to it after checking their mail.
+  return await new Promise<string>((resolve, reject) => {
+    let settled = false
+    let linkSub: ReturnType<typeof Linking.addEventListener> | undefined
+
+    const done = (finish: () => void): void => {
+      if (settled) return
+      settled = true
+      linkSub?.remove()
+      void WebBrowser.dismissBrowser().catch(() => undefined)
+      finish()
+    }
+
+    linkSub = Linking.addEventListener('url', ({ url: incoming }) => {
+      if (incoming && incoming.startsWith('cozy:')) {
+        console.log('[auth] captured cozy:// redirect via deep link')
+        done(() => resolve(normalizeRedirectUrl(incoming)))
       }
-      redirectUrl = received
-    }
-    if (redirectUrl) {
-      const cleaned = normalizeRedirectUrl(redirectUrl)
-      console.log('[auth] captured redirect', cleaned)
-      return cleaned
-    }
-    throw new UserCancelledError()
-  } finally {
-    sub.remove()
-  }
+    })
+
+    WebBrowser.openBrowserAsync(url, { showInRecents: true }).then(
+      () => {
+        // The Custom Tab was closed. If a cozy:// redirect already arrived this is
+        // a no-op; otherwise a close + redirect can race, so give the deep link a
+        // brief grace period before treating a genuine close as a user cancel.
+        setTimeout(() => done(() => reject(new UserCancelledError())), 500)
+      },
+      (err: unknown) => done(() => reject(err as Error))
+    )
+  })
 }
