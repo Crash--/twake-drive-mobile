@@ -1,0 +1,33 @@
+appId: com.linagora.twakedrive
+tags:
+  - inapp
+env:
+  FOLDER: 'E2Efav'
+  MENU_SUFFIX: ''
+---
+# Favori : ajout → présent dans Favoris → retrait → ABSENT de Favoris (valide le fix
+# refetch + retrait optimiste). Throwaway sans tiret (l'inputText iOS mange le '-').
+# waitForAnimationToEnd après chaque ouverture de menu (l'animation iOS sinon rate le
+# tap de l'item). MENU_SUFFIX = -container-outer-layer sur iOS (via run-ios.sh).
+- runFlow: ../../subflows/openDrive.yaml
+- tapOn: { id: 'drive-fab' }
+- tapOn: 'Nouveau dossier'
+- inputText: '${FOLDER}'
+- pressKey: Enter
+- extendedWaitUntil: { visible: '${FOLDER}', timeout: 20000 }
+- tapOn: { id: 'folder-actions:${FOLDER}${MENU_SUFFIX}' }
+- waitForAnimationToEnd
+- tapOn: 'Ajouter aux favoris'
+- tapOn: { text: 'Favoris.*' }
+- swipe: { start: '50%, 35%', end: '50%, 75%' }
+- extendedWaitUntil: { visible: '${FOLDER}', timeout: 25000 }
+- tapOn: { id: 'folder-actions:${FOLDER}${MENU_SUFFIX}' }
+- waitForAnimationToEnd
+- tapOn: 'Retirer des favoris'
+- extendedWaitUntil: { notVisible: '${FOLDER}', timeout: 20000 }
+- tapOn: { text: 'Mon Drive.*' }
+- tapOn: { id: 'folder-actions:${FOLDER}${MENU_SUFFIX}' }
+- waitForAnimationToEnd
+- tapOn: 'Supprimer'
+- waitForAnimationToEnd
+- tapOn: { id: 'confirm-delete-submit' }
