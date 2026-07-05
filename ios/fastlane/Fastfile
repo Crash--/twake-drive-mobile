@@ -8,6 +8,33 @@ default_platform(:ios)
 APP_IDENTIFIER = "com.linagora.twakedrive"
 
 platform :ios do
+  # One-off provisioning: create any MISSING match profiles (e.g. a newly-added
+  # extension) in WRITE mode, so the readonly release lane can then fetch them.
+  # `force: false` reuses the existing app/ShareExt profiles and only creates the
+  # missing one. PREREQUISITE: the App ID must already carry its capabilities
+  # (App Groups) in the Apple Developer portal — match provisions profiles, it
+  # does NOT enable capabilities. Run via the provision-ios workflow.
+  desc "Create missing match profiles for the app + extensions (write mode)"
+  lane :provision_extensions do
+    setup_ci
+
+    api_key = app_store_connect_api_key(
+      key_id: ENV["APP_STORE_CONNECT_API_KEY_ID"],
+      issuer_id: ENV["APP_STORE_CONNECT_ISSUER_ID"],
+      key_content: ENV["APP_STORE_CONNECT_API_KEY_CONTENT"],
+      is_key_content_base64: true
+    )
+
+    match(
+      type: "appstore",
+      app_identifier: [APP_IDENTIFIER, "#{APP_IDENTIFIER}.ShareExt", "#{APP_IDENTIFIER}.FileProvider"],
+      git_url: ENV["MATCH_GIT_URL"],
+      api_key: api_key,
+      readonly: false,
+      force: false
+    )
+  end
+
   desc "Build a signed IPA and upload it to TestFlight"
   lane :distribute do
     setup_ci

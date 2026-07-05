@@ -1,0 +1,51 @@
+name: Provision iOS (create missing match profiles)
+
+# One-off, manually triggered. Creates any MISSING fastlane match profiles (e.g.
+# a newly-added extension) in WRITE mode and pushes them to the match repo, so the
+# readonly release build (release-ios.yml) can then fetch them.
+#
+# PREREQUISITE — do this in the Apple Developer portal FIRST: the extension's App
+# ID (e.g. com.linagora.twakedrive.FileProvider) must exist and carry its
+# capabilities (App Groups → group.com.linagora.twakedrive). match provisions
+# profiles; it does NOT enable capabilities. Running this before the portal step
+# would create a profile without App Groups and the release build would still fail.
+#
+# Needs write access to the match repo (MATCH_DEPLOY_KEY must allow writes).
+# See docs/ci-cd-signed-release.md.
+on:
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}
+  cancel-in-progress: false
+
+jobs:
+  provision-ios:
+    runs-on: macos-15
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+
+      - name: Set up Ruby (fastlane)
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.2'
+          bundler-cache: true
+
+      # match certs + profiles live in a private git repo; this deploy key must
+      # grant CI WRITE access so match can push the newly-created profile.
+      - name: Authorize the fastlane match certificates repo
+        uses: webfactory/ssh-agent@e83874834305fe9a4a2997156cb26c5de65a8555 # v0.10.0
+        with:
+          ssh-private-key: ${{ secrets.MATCH_DEPLOY_KEY }}
+
+      - name: Create missing match profiles (write mode)
+        working-directory: ios
+        env:
+          MATCH_GIT_URL: ${{ secrets.MATCH_GIT_URL }}
+          MATCH_PASSWORD: ${{ secrets.MATCH_PASSWORD }}
+          APP_STORE_CONNECT_API_KEY_ID: ${{ secrets.APP_STORE_CONNECT_API_KEY_ID }}
+          APP_STORE_CONNECT_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
+          APP_STORE_CONNECT_API_KEY_CONTENT: ${{ secrets.APP_STORE_CONNECT_API_KEY_CONTENT }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: bundle exec fastlane ios provision_extensions
