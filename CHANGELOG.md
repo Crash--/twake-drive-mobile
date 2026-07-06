@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.2] - 2026-07-06
+
+### Fixed
+
+- **Login completion on Android** — after the flagship certification redirect, a
+  cross-platform quirk (`WebBrowser.dismissBrowser()` returns void on Android but a
+  Promise on iOS) threw a TypeError that swallowed the auth completion, looping the
+  user back to the email screen (and re-showing the consent page). Guarded so the
+  login now completes.
+
 ## [0.2.1] - 2026-07-05
 
 ### Fixed
@@ -90,6 +100,7 @@ seven languages.
   Provider extension (App Group + `match` profile) before TestFlight uploads
   succeed; Android 0.2.0 ships to Firebase App Distribution.
 
-[Unreleased]: https://github.com/mmaudet/twake-drive-mobile/compare/v0.2.1...HEAD
+[Unreleased]: https://github.com/mmaudet/twake-drive-mobile/compare/v0.2.2...HEAD
+[0.2.2]: https://github.com/mmaudet/twake-drive-mobile/compare/v0.2.1...v0.2.2
 [0.2.1]: https://github.com/mmaudet/twake-drive-mobile/compare/v0.2.0...v0.2.1
 [0.2.0]: https://github.com/mmaudet/twake-drive-mobile/releases/tag/v0.2.0
