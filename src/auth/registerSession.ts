@@ -82,7 +82,11 @@ export const registerSession = async (
       scope: '*'
     })) as OidcResponse
   } catch (e) {
-    console.error('[registerSession] /oidc/access_token failed', (e as Error).message, e)
+    const msg = (e as Error).message ?? ''
+    if (existing?.clientID && /must be registered|invalid_client/i.test(msg)) {
+      return await registerSession(callback, undefined)
+    }
+    console.error('[registerSession] /oidc/access_token failed', msg, e)
     throw e
   }
   console.log('[registerSession] oidc response keys', Object.keys(oidcResponse).join(','))
