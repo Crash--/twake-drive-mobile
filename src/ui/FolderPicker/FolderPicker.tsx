@@ -4,6 +4,7 @@ import { Appbar, Button, Portal, useTheme } from 'react-native-paper'
 import { useTranslation } from 'react-i18next'
 import { useClient, useQuery } from 'cozy-client'
 
+import { CozyIcon } from '@/ui/icons/CozyIcon'
 import { ScreenContainer } from '@/ui/ScreenContainer'
 import { LoadingState } from '@/ui/LoadingState'
 import { EmptyState } from '@/ui/EmptyState'
@@ -111,11 +112,19 @@ export const FolderPicker = ({
             doubles up the spacing. */}
         <Appbar.Header statusBarHeight={0}>
           {isAtRoot ? null : (
-            <Appbar.BackAction onPress={onBack} accessibilityLabel={t('common.back')} />
+            <Appbar.Action
+              isLeading
+              animated={false}
+              icon={p => (
+                <CozyIcon name="previous" size={p?.size ?? 24} color={theme.colors.onSurface} />
+              )}
+              onPress={onBack}
+              accessibilityLabel={t('common.back')}
+            />
           )}
           <Appbar.Content title={title} />
           <Appbar.Action
-            icon="folder-plus"
+            icon={p => <CozyIcon name="folderAdd" size={p?.size ?? 24} color={p?.color} />}
             accessibilityLabel={t('drive.move.newFolder')}
             onPress={() => setCreatingFolder(true)}
           />
@@ -157,6 +166,7 @@ export const FolderPicker = ({
           </Button>
           <Button
             mode="contained"
+            testID="folder-picker-confirm"
             disabled={confirmDisabled}
             loading={isBusy}
             onPress={() => onConfirm({ _id: currentFolderId, name: title })}

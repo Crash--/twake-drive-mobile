@@ -33,13 +33,15 @@ export const createClient = async (session: Session): Promise<CozyClient> => {
   const client = new CozyClient({
     uri: session.uri,
     oauth: { ...session.oauthOptions, token: session.token },
+    // `scope` is absent from cozy-client's ClientOptions type but accepted at
+    // runtime to request specific OAuth doctype scopes (see @/auth/scopes).
     scope: [...APP_SCOPES],
     appMetadata: {
       slug: 'twake-drive-mobile',
       version: '0.1.0'
     },
     links: getLinks()
-  })
+  } as ConstructorParameters<typeof CozyClient>[0] & { scope: string[] })
 
   try {
     await client.registerPlugin(flag.plugin, null)
@@ -57,6 +59,14 @@ export const createClient = async (session: Session): Promise<CozyClient> => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     await client.login({ uri: session.uri, token: session.token } as any)
   } catch (err) {
+    const msg = (err as Error)?.message ?? ''
+    if (
+      /invalid.?token|invalid_grant|invalid_client|must be registered|unauthorized|\b401\b/i.test(
+        msg
+      )
+    ) {
+      throw err
+    }
     // Offline, login may fail (OAuth token refresh / handshake). PouchManager
     // is initialized as a side effect of onLogin; if that failed too, queries
     // for replicated doctypes will fall back to StackLink — also broken offline

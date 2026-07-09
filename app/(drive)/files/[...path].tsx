@@ -1,5 +1,5 @@
-import React, { useCallback, useRef, useState } from 'react'
-import { FlatList, RefreshControl, StyleSheet, View } from 'react-native'
+import React, { useCallback, useMemo, useRef, useState } from 'react'
+import { FlatList, Linking, RefreshControl, StyleSheet, View } from 'react-native'
 import { FAB, Snackbar } from 'react-native-paper'
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router'
 import { useClient, useQuery } from 'cozy-client'
@@ -12,8 +12,15 @@ import { ErrorState } from '@/ui/ErrorState'
 import { LoadingState } from '@/ui/LoadingState'
 import { FileRow } from '@/ui/FileRow'
 import { FolderRow } from '@/ui/FolderRow'
+import { FileGridItem } from '@/ui/FileGridItem'
+import { ViewSwitcher } from '@/ui/ViewSwitcher'
+import { useViewMode } from '@/ui/useViewMode'
+import { SortControl } from '@/ui/SortControl'
+import { useFolderSort } from '@/ui/useFolderSort'
 import { CreateFolderDialog } from '@/ui/CreateFolderDialog'
 import { CreateOfficeFileDialog } from '@/ui/CreateOfficeFileDialog'
+import { CreateShortcutDialog } from '@/ui/CreateShortcutDialog'
+import { CozyIcon } from '@/ui/icons/CozyIcon'
 import { ConfirmDeleteDialog } from '@/ui/ConfirmDeleteDialog'
 import { RenameDialog } from '@/ui/RenameDialog'
 import { useMultiSelect } from '@/ui/useMultiSelect'
@@ -22,9 +29,13 @@ import { getErrorMessageKey } from '@/utils/errorMessages'
 import { createFolder } from '@/files/createFolder'
 import { createCozyNote } from '@/files/createCozyNote'
 import { createOfficeFile, OfficeFileClass } from '@/files/createOfficeFile'
+import { createShortcut } from '@/files/createShortcut'
+import { buildCozyAppUrl } from '@/files/cozyAppLink'
+import { useSessionCode } from '@/auth/useSessionCode'
 import { softDeleteEntry } from '@/files/deleteFile'
 import { renameEntry } from '@/files/renameEntry'
 import { openFileFromList } from '@/files/openFromList'
+import { surfaceOpenError } from '@/files/errors'
 import { useFlag } from '@/client/useFlag'
 import { useIsOnline } from '@/network/useIsOnline'
 import { requireOnline } from '@/network/requireOnline'
@@ -46,6 +57,7 @@ export default function FilesScreen() {
   const router = useRouter()
   const { t } = useTranslation()
   const { logout } = useAuth()
+  const fetchSessionCode = useSessionCode()
   const params = useLocalSearchParams<{ path?: string | string[] }>()
   const rawPath = params.path
   const path: string[] | undefined =
@@ -59,12 +71,15 @@ export default function FilesScreen() {
   const [refreshing, setRefreshing] = useState(false)
   const [createFolderVisible, setCreateFolderVisible] = useState(false)
   const [creatingClass, setCreatingClass] = useState<OfficeFileClass | null>(null)
+  const [createShortcutVisible, setCreateShortcutVisible] = useState(false)
   const [fabOpen, setFabOpen] = useState(false)
   const [pendingDelete, setPendingDelete] = useState<FileQueryResult | null>(null)
   const [pendingRename, setPendingRename] = useState<FileQueryResult | null>(null)
   const [bulkConfirmVisible, setBulkConfirmVisible] = useState(false)
   const [deleting, setDeleting] = useState(false)
   const [snackbar, setSnackbar] = useState<string | null>(null)
+  const { mode } = useViewMode()
+  const { sort } = useFolderSort()
   const selection = useMultiSelect()
   const offlineActions = useOfflineActions()
   const onToggleFilePin = useCallback(
@@ -116,7 +131,7 @@ export default function FilesScreen() {
   const lookupData = currentDirLookup.data
   const lookupDoc = Array.isArray(lookupData) ? lookupData[0] : lookupData
   const currentDirName = isRoot
-    ? t('drive.myFiles')
+    ? t('drive.myDrive')
     : ((lookupDoc as { name?: string } | null | undefined)?.name ?? '')
 
   const onRefresh = useCallback(async () => {
@@ -162,6 +177,30 @@ export default function FilesScreen() {
     router.push(`/docs/new/${currentDirId}`)
   }
 
+  const handleCreateExcalidraw = async (): Promise<void> => {
+    if (!requireOnline(isOnline, setSnackbar, t)) return
+    if (!client) return
+    try {
+      const sessionCode = await fetchSessionCode()
+      const stackUri = (client.getStackClient() as unknown as { uri: string }).uri
+      // Open the Cozy excalidraw web app; it handles file creation and
+      // saves into dirId via its own UI. Pragmatic approach: no server-side
+      // file is pre-created — the excalidraw app owns the create flow.
+      const url = buildCozyAppUrl(stackUri, 'excalidraw', sessionCode, '/')
+      await Linking.openURL(url)
+    } catch (e) {
+      console.error('[FilesScreen] excalidraw open failed', e)
+    }
+  }
+
+  const handleCreateShortcut = async (name: string, url: string): Promise<void> => {
+    if (!requireOnline(isOnline, setSnackbar, t)) return
+    if (!client) throw new Error('No client')
+    await createShortcut(client, currentDirId, name, url)
+    setCreateShortcutVisible(false)
+    await Promise.all([foldersQuery.fetch(), filesQuery.fetch()])
+  }
+
   const requestDelete = (entry: FileQueryResult): void => {
     setPendingDelete(entry)
   }
@@ -204,6 +243,9 @@ export default function FilesScreen() {
         )
       )
       setPendingDelete(null)
+      // Refetch so the removed row disappears immediately (client.destroy already
+      // wrote the deletion to local Pouch). Mirrors the create/rename handlers.
+      await Promise.all([foldersQuery.fetch(), filesQuery.fetch()])
     } catch (e) {
       console.error('[FilesScreen] delete failed', e)
       setSnackbar(t('drive.delete.errorGeneric'))
@@ -232,6 +274,7 @@ export default function FilesScreen() {
       setSnackbar(t('drive.delete.successBulk', { count: items.length }))
       selection.clear()
       setBulkConfirmVisible(false)
+      await Promise.all([foldersQuery.fetch(), filesQuery.fetch()])
     } catch (e) {
       console.error('[FilesScreen] bulk delete failed', e)
       setSnackbar(t('drive.delete.errorGeneric'))
@@ -277,10 +320,9 @@ export default function FilesScreen() {
             return
           }
           if (!client) return
-          void openFileFromList(client, router, file).catch(e => {
-            console.error('[FilesScreen] openFileFromList failed', e)
-            setSnackbar((e as Error).message ?? t('drive.preview.loadFailed'))
-          })
+          void openFileFromList(client, router, file).catch(e =>
+            surfaceOpenError(e, setSnackbar, t, 'FilesScreen')
+          )
         }}
         onLongPress={file => selection.select(file._id)}
         onShare={
@@ -300,12 +342,45 @@ export default function FilesScreen() {
     )
   }
 
+  const renderGridItem = ({ item }: { item: FileQueryResult }) => {
+    const isSelected = selection.isSelected(item._id)
+    return (
+      <FileGridItem
+        file={item}
+        selected={isSelected}
+        onPress={file => {
+          if (selection.isSelecting) {
+            selection.toggle(file._id)
+            return
+          }
+          if (item.type === 'directory') {
+            router.push(`/(drive)/files/${[...(path ?? []), file._id].join('/')}`)
+          } else {
+            if (!client) return
+            void openFileFromList(client, router, file).catch(e =>
+              surfaceOpenError(e, setSnackbar, t, 'FilesScreen')
+            )
+          }
+        }}
+        onLongPress={file => selection.select(file._id)}
+      />
+    )
+  }
+
   // Folders first, then files — same display order as twake-drive-web.
   const folderDocs = (foldersQuery.data as FileQueryResult[] | null | undefined) ?? []
   const fileDocs = (filesQuery.data as FileQueryResult[] | null | undefined) ?? []
   // shared-drives-dir + trash-dir are already filtered server-side by
   // buildDriveQuery (see src/client/queries.ts).
-  const data = [...folderDocs, ...fileDocs]
+  // Sort within each group (folders / files) separately to preserve grouping.
+  const data = useMemo(() => {
+    const dir = sort.dir === 'asc' ? 1 : -1
+    const sorted = (arr: FileQueryResult[]) =>
+      [...arr].sort(
+        (a, b) => dir * a.name.localeCompare(b.name, undefined, { sensitivity: 'base' })
+      )
+    return [...sorted(folderDocs), ...sorted(fileDocs)]
+  }, [folderDocs, fileDocs, sort.dir])
 
   const fabActions = [
     {
@@ -341,6 +416,20 @@ export default function FilesScreen() {
       icon: 'file-presentation-box',
       label: t('drive.createMenu.slide'),
       onPress: () => setCreatingClass('slide')
+    },
+    {
+      icon: (p: { size: number; color?: string }) => (
+        <CozyIcon name="excalidraw" size={p.size} color={p.color} />
+      ),
+      label: t('drive.createMenu.excalidraw'),
+      onPress: () => void handleCreateExcalidraw()
+    },
+    {
+      icon: (p: { size: number; color?: string }) => (
+        <CozyIcon name="deviceBrowser" size={p.size} color={p.color} />
+      ),
+      label: t('drive.createMenu.shortcut'),
+      onPress: () => setCreateShortcutVisible(true)
     }
   ]
 
@@ -350,6 +439,7 @@ export default function FilesScreen() {
         title={currentDirName}
         onBack={isRoot ? undefined : () => router.back()}
         onLogout={isRoot ? logout : undefined}
+        showSearch
         selection={
           selection.isSelecting
             ? {
@@ -374,13 +464,18 @@ export default function FilesScreen() {
                     icon: 'trash-can-outline',
                     onPress: () => setBulkConfirmVisible(true),
                     accessibilityLabel: t('drive.fileMeta.delete'),
-                    destructive: true
+                    destructive: true,
+                    testID: 'selection-delete'
                   }
                 ]
               }
             : undefined
         }
       />
+      <View style={styles.toolbar}>
+        <SortControl />
+        <ViewSwitcher />
+      </View>
       {(foldersQuery.fetchStatus === 'loading' || filesQuery.fetchStatus === 'loading') &&
       data.length === 0 ? (
         <LoadingState />
@@ -396,9 +491,11 @@ export default function FilesScreen() {
         <EmptyState message={t('drive.emptyFolder')} />
       ) : (
         <FlatList
+          key={mode}
           data={data}
           keyExtractor={item => item._id}
-          renderItem={renderItem}
+          numColumns={mode === 'grid' ? 3 : undefined}
+          renderItem={mode === 'grid' ? renderGridItem : renderItem}
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
           onEndReachedThreshold={0.5}
           onEndReached={() => {
@@ -415,6 +512,7 @@ export default function FilesScreen() {
         onCancel={offlineActions.cancelPending}
       />
       <FAB.Group
+        testID="drive-fab"
         open={fabOpen}
         visible={!selection.isSelecting && isOnline}
         icon={fabOpen ? 'close' : 'plus'}
@@ -431,6 +529,11 @@ export default function FilesScreen() {
         fileClass={creatingClass}
         onDismiss={() => setCreatingClass(null)}
         onSubmit={handleCreateOffice}
+      />
+      <CreateShortcutDialog
+        visible={createShortcutVisible}
+        onDismiss={() => setCreateShortcutVisible(false)}
+        onSubmit={handleCreateShortcut}
       />
       <ConfirmDeleteDialog
         visible={!!pendingDelete}
@@ -461,5 +564,11 @@ export default function FilesScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1 }
+  container: { flex: 1 },
+  toolbar: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    paddingHorizontal: 8,
+    paddingVertical: 4
+  }
 })

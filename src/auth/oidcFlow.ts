@@ -1,8 +1,5 @@
-import * as WebBrowser from 'expo-web-browser'
-
-import { OidcCallback, UserCancelledError } from './types'
-
-const REDIRECT_URL = 'cozy://'
+import { openLoginUrl } from './pkce'
+import { OidcCallback } from './types'
 
 export const parseCallbackUrl = (callbackUrl: string): OidcCallback => {
   const url = new URL(callbackUrl)
@@ -17,14 +14,6 @@ export const parseCallbackUrl = (callbackUrl: string): OidcCallback => {
 }
 
 export const startOidcFlow = async (loginUri: URL): Promise<OidcCallback> => {
-  console.log('[oidcFlow] opening', loginUri.toString())
-  const result = await WebBrowser.openAuthSessionAsync(loginUri.toString(), REDIRECT_URL, {
-    showInRecents: false
-  })
-  console.log('[oidcFlow] result', JSON.stringify(result))
-
-  if (result.type === 'success' && result.url) {
-    return parseCallbackUrl(result.url)
-  }
-  throw new UserCancelledError()
+  const redirectUrl = await openLoginUrl(loginUri.toString())
+  return parseCallbackUrl(redirectUrl)
 }

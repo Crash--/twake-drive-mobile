@@ -1,0 +1,32 @@
+appId: com.linagora.twakedrive
+tags:
+  - inapp
+env:
+  FOLDER_NAME: 'E2E-smoke'
+---
+# Real CREATE + DELETE round-trip, scoped STRICTLY to a throwaway folder.
+#
+# ⚠️ SAFETY + reliability: delete via the PER-FOLDER menu testID
+# `folder-actions:<name>` (targets the exact row) -> "Supprimer" ->
+# `confirm-delete-submit`. NEVER a `rightOf` selector (resolves to the wrong row —
+# it deleted real folders in bring-up) nor a bare long-press (it grabs dialog text
+# if a create-conflict dialog is open). The post-delete refetch (point-3 fix)
+# removes the row live.
+- runFlow: ../../subflows/openDrive.yaml
+- tapOn:
+    id: 'drive-fab'
+- tapOn: 'Nouveau dossier'
+- inputText: '${FOLDER_NAME}'
+- pressKey: Enter
+- extendedWaitUntil:
+    visible: '${FOLDER_NAME}'
+    timeout: 12000
+- tapOn:
+    id: 'folder-actions:${FOLDER_NAME}'
+- tapOn: 'Supprimer'
+- waitForAnimationToEnd
+- tapOn:
+    id: 'confirm-delete-submit'
+- extendedWaitUntil:
+    notVisible: '${FOLDER_NAME}'
+    timeout: 15000

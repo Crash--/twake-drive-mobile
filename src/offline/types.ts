@@ -1,9 +1,4 @@
-export type OfflineFileState =
-  | 'pending'
-  | 'downloading'
-  | 'downloaded'
-  | 'failed'
-  | 'paused-auth'
+export type OfflineFileState = 'pending' | 'downloading' | 'downloaded' | 'failed' | 'paused-auth'
 
 export interface OfflineFileEntry {
   fileId: string
@@ -30,6 +25,10 @@ export interface OfflineFolderEntry {
   dirId: string
   pinnedAt: number
   name: string
+  /** Ancestor folder ids (root + intermediate) that pinned this subfolder, so
+   *  unpinning an ancestor can recurse and purge nested subfolders. Empty/absent
+   *  for a directly-pinned folder. */
+  ancestorPins?: string[]
 }
 
 export interface OfflineSettings {

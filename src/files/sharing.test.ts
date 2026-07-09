@@ -132,9 +132,7 @@ describe('buildPublicLinkUrl', () => {
       _id: 'perm-1',
       attributes: { codes: { code: 'XYZCODE' } }
     })
-    expect(url).toBe(
-      'https://alice-drive.cozy.example/public?sharecode=XYZCODE'
-    )
+    expect(url).toBe('https://alice-drive.cozy.example/public?sharecode=XYZCODE')
   })
 
   it('returns null when there are no codes', () => {
@@ -199,9 +197,7 @@ describe('buildPublicLinkUrl', () => {
       _id: 'perm-1',
       attributes: { codes: { code: 'LONGFULLSHARECODE' } }
     })
-    expect(url).toBe(
-      'https://alice-drive.cozy.example/public?sharecode=LONGFULLSHARECODE'
-    )
+    expect(url).toBe('https://alice-drive.cozy.example/public?sharecode=LONGFULLSHARECODE')
   })
 })
 
@@ -232,11 +228,7 @@ describe('absoluteMemberIndex', () => {
     const sharing = {
       _id: 's1',
       attributes: {
-        members: [
-          { status: 'owner' },
-          { status: 'pending' },
-          { status: 'ready' }
-        ]
+        members: [{ status: 'owner' }, { status: 'pending' }, { status: 'ready' }]
       }
     }
     expect(absoluteMemberIndex(sharing, 0)).toBe(1)
@@ -376,7 +368,7 @@ describe('createPublicLink', () => {
     await createPublicLink(client, { _id: 'file-1', type: 'file' })
     expect(createSharingLink).toHaveBeenCalledWith(
       { _id: 'file-1', _type: 'io.cozy.files', type: 'file' },
-      { tiny: true, verbs: ['GET'] }
+      { verbs: ['GET'] }
     )
   })
 
@@ -386,7 +378,7 @@ describe('createPublicLink', () => {
     await createPublicLink(client, { _id: 'file-1', type: 'file' }, 'write')
     expect(createSharingLink).toHaveBeenCalledWith(
       { _id: 'file-1', _type: 'io.cozy.files', type: 'file' },
-      { tiny: true, verbs: ['GET', 'POST', 'PUT', 'PATCH'] }
+      { verbs: ['GET', 'POST', 'PUT', 'PATCH'] }
     )
   })
 
@@ -396,8 +388,17 @@ describe('createPublicLink', () => {
     await createPublicLink(client, { _id: 'file-1', type: 'file' }, 'readOnly')
     expect(createSharingLink).toHaveBeenCalledWith(
       { _id: 'file-1', _type: 'io.cozy.files', type: 'file' },
-      { tiny: true, verbs: ['GET'] }
+      { verbs: ['GET'] }
     )
+  })
+
+  it('does NOT request a tiny shortcode (the stack rejects tiny without a ttl, but a public link must be permanent)', async () => {
+    const createSharingLink = jest.fn().mockResolvedValue({ data: { _id: 'p1' } })
+    const client = makeClient({ 'io.cozy.permissions': { createSharingLink } })
+    await createPublicLink(client, { _id: 'file-1', type: 'file' })
+    const options = createSharingLink.mock.calls[0][1]
+    expect(options).not.toHaveProperty('tiny')
+    expect(options).not.toHaveProperty('ttl')
   })
 
   it('triggers sharings + permissions pouch replications on success', async () => {
@@ -410,9 +411,7 @@ describe('createPublicLink', () => {
   it('does NOT trigger pouch replication when the stack call fails', async () => {
     const createSharingLink = jest.fn().mockRejectedValue(new Error('boom'))
     const client = makeClient({ 'io.cozy.permissions': { createSharingLink } })
-    await expect(createPublicLink(client, { _id: 'file-1', type: 'file' })).rejects.toThrow(
-      'boom'
-    )
+    await expect(createPublicLink(client, { _id: 'file-1', type: 'file' })).rejects.toThrow('boom')
     expect(triggerPouchReplication).not.toHaveBeenCalled()
   })
 })
@@ -503,9 +502,9 @@ describe('revokePublicLink', () => {
   it('does NOT trigger pouch replication when the stack call fails', async () => {
     const revokeSharingLink = jest.fn().mockRejectedValue(new Error('boom'))
     const client = makeClient({ 'io.cozy.permissions': { revokeSharingLink } })
-    await expect(
-      revokePublicLink(client, { _id: 'file-1', type: 'directory' })
-    ).rejects.toThrow('boom')
+    await expect(revokePublicLink(client, { _id: 'file-1', type: 'directory' })).rejects.toThrow(
+      'boom'
+    )
     expect(triggerPouchReplication).not.toHaveBeenCalled()
   })
 })

@@ -5,8 +5,12 @@ if (typeof FormData === 'undefined') {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   ;(global as any).FormData = class FormData {
     private data: Record<string, string> = {}
-    append(key: string, value: string) { this.data[key] = value }
-    get(key: string) { return this.data[key] ?? null }
+    append(key: string, value: string) {
+      this.data[key] = value
+    }
+    get(key: string) {
+      return this.data[key] ?? null
+    }
   }
 }
 
@@ -18,7 +22,8 @@ const nodeFetch = require('node-fetch')
 jest.mock('expo-secure-store', () => ({
   getItemAsync: jest.fn(),
   setItemAsync: jest.fn(),
-  deleteItemAsync: jest.fn()
+  deleteItemAsync: jest.fn(),
+  AFTER_FIRST_UNLOCK: 'AFTER_FIRST_UNLOCK'
 }))
 
 jest.mock('expo-web-browser', () => ({
@@ -29,6 +34,17 @@ jest.mock('expo-web-browser', () => ({
     DISMISS: 'dismiss'
   }
 }))
+
+// react-native-webview's WebView.<platform>.js calls TurboModuleRegistry
+// .getEnforcing('RNCWebView') at require() time, which throws in the node test
+// env. Any file that imports it — the editor screens, FlagshipAuthModal, and now
+// oidcFlow transitively — would crash on load. Stub it with a host component so
+// those imports resolve; tests asserting on WebView behaviour override locally.
+jest.mock('react-native-webview', () => {
+  const React = require('react')
+  const Stub = (props: Record<string, unknown>) => React.createElement('WebView', props)
+  return { __esModule: true, WebView: Stub, default: Stub }
+})
 
 jest.mock('expo-localization', () => ({
   getLocales: () => [{ languageCode: 'fr', languageTag: 'fr-FR' }]
@@ -61,9 +77,22 @@ jest.mock('react-native-mmkv', () => ({
   }))
 }))
 
-jest.mock('@react-native-community/netinfo', () => ({
-  addEventListener: jest.fn(() => () => undefined),
-  fetch: jest.fn().mockResolvedValue({ isConnected: true, isInternetReachable: true })
+jest.mock('@react-native-community/netinfo', () => {
+  const netInfo = {
+    configure: jest.fn(),
+    addEventListener: jest.fn(() => () => undefined),
+    fetch: jest.fn().mockResolvedValue({ isConnected: true, isInternetReachable: true })
+  }
+  // Expose both the default import (NetInfo.configure) and named exports.
+  return { __esModule: true, default: netInfo, ...netInfo }
+})
+
+// react-native-file-viewer builds a NativeEventEmitter at require() time, which
+// crashes in node. Any component transitively importing it (FileRow → download →
+// openFile) needs this. Local mocks in openFile.test/FileRow.test still override.
+jest.mock('react-native-file-viewer', () => ({
+  __esModule: true,
+  default: { open: jest.fn().mockResolvedValue(undefined) }
 }))
 
 class MockPouchLink {

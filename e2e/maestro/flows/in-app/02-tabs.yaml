@@ -1,0 +1,19 @@
+appId: com.linagora.twakedrive
+tags:
+  - inapp
+---
+# Onglets par regex ('<Onglet>.*' matche iOS "Récents, tab, 3 of 7" + Android "Récents").
+- runFlow: ../../subflows/openDrive.yaml
+- tapOn:
+    text: 'Récents.*'
+- tapOn:
+    text: 'Favoris.*'
+- tapOn:
+    text: 'Corbeille.*'
+- tapOn:
+    text: 'Mon Drive.*'
+# La barre d'onglets affiche toujours "Mon Drive" (regex tolère le suffixe iOS).
+- extendedWaitUntil:
+    visible:
+      text: 'Mon Drive.*'
+    timeout: 8000

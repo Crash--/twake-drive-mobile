@@ -6,10 +6,20 @@
     "logout": "Log out",
     "cancel": "Cancel",
     "confirm": "Confirm",
-    "back": "Back"
+    "back": "Back",
+    "help": "Help"
   },
   "settings": {
-    "title": "Settings"
+    "title": "Settings",
+    "account": "Account",
+    "language": "Language",
+    "systemLanguage": "System (device language)",
+    "theme": "Theme",
+    "themeSystem": "System",
+    "themeLight": "Light",
+    "themeDark": "Dark",
+    "about": "About",
+    "version": "Version"
   },
   "auth": {
     "welcomeTitle": "Welcome to Twake Drive",
@@ -24,6 +34,10 @@
   },
   "drive": {
     "myFiles": "My files",
+    "myDrive": "My Drive",
+    "favorites": "Favorites",
+    "shares": "Shares",
+    "emptyFavorites": "No favorites",
     "shared": "Shared with me",
     "sharedDrives": "Drives",
     "recent": "Recent",
@@ -33,6 +47,8 @@
     "emptySharedDrives": "No shared drives yet",
     "emptyRecent": "No recent files",
     "emptyTrash": "Trash is empty",
+    "sortAZ": "A-Z",
+    "sortZA": "Z-A",
     "fileMeta": {
       "type": "Type",
       "size": "Size",
@@ -45,18 +61,24 @@
       "rename": "Rename",
       "delete": "Delete",
       "info": "Details",
-      "move": "Move…"
+      "move": "Move…",
+      "favorite": "Add to favorites",
+      "unfavorite": "Remove from favorites",
+      "download": "Download"
     },
     "delete": {
       "confirmFileTitle": "Delete file?",
       "confirmFolderTitle": "Delete folder?",
-      "confirmBulkTitle": "Delete {{count}} items?",
+      "confirmBulkTitle_one": "Delete {{count}} item?",
+      "confirmBulkTitle_other": "Delete {{count}} items?",
       "confirmBody": "\"{{name}}\" will be moved to the trash.",
-      "confirmBulkBody": "{{count}} items will be moved to the trash.",
+      "confirmBulkBody_one": "{{count}} item will be moved to the trash.",
+      "confirmBulkBody_other": "{{count}} items will be moved to the trash.",
       "confirm": "Delete",
       "successFile": "File moved to trash",
       "successFolder": "Folder moved to trash",
-      "successBulk": "{{count}} items moved to trash",
+      "successBulk_one": "{{count}} item moved to trash",
+      "successBulk_other": "{{count}} items moved to trash",
       "errorGeneric": "Could not delete"
     },
     "move": {
@@ -64,9 +86,23 @@
       "action": "Move here",
       "successFile": "File moved",
       "successFolder": "Folder moved",
-      "successBulk": "{{count}} items moved",
+      "successBulk_one": "{{count}} item moved",
+      "successBulk_other": "{{count}} items moved",
       "errorGeneric": "Move failed",
       "newFolder": "New folder"
+    },
+    "import": {
+      "title": "Import to…",
+      "confirm": "Import here",
+      "uploading": "Importing… {{done}}/{{total}}",
+      "successFile": "File imported",
+      "successBulk_one": "{{count}} file imported",
+      "successBulk_other": "{{count}} files imported",
+      "partial": "{{succeeded}}/{{total}} imported, {{failed}} failed",
+      "errorGeneric": "Import failed",
+      "errorOffline": "Connection required to import",
+      "errorQuota": "Not enough storage",
+      "loginRequired": "Sign in to import"
     },
     "selection": {
       "count_one": "{{count}} selected",
@@ -128,7 +164,16 @@
       "docs": "New document",
       "text": "Word document",
       "sheet": "Spreadsheet",
-      "slide": "Presentation"
+      "slide": "Presentation",
+      "excalidraw": "Excalidraw",
+      "shortcut": "Shortcut"
+    },
+    "createShortcut": {
+      "title": "New shortcut",
+      "nameLabel": "Name",
+      "urlLabel": "URL",
+      "submit": "Create",
+      "errorGeneric": "Failed to create shortcut."
     },
     "createOffice": {
       "title": "Document name",
@@ -166,11 +211,14 @@
       "failed": "Download failed",
       "notAvailableOffline": "File not available offline",
       "folderPartial": "{{count}}/{{total}} files",
-      "folderSummary": "{{count}} files · {{size}}",
-      "folderConfirm": "This folder contains {{count}} files (~{{size}}). Continue?",
+      "folderSummary_one": "{{count}} file · {{size}}",
+      "folderSummary_other": "{{count}} files · {{size}}",
+      "folderConfirm_one": "This folder contains {{count}} file (~{{size}}). Continue?",
+      "folderConfirm_other": "This folder contains {{count}} files (~{{size}}). Continue?",
       "bigFolderTitle": "Confirm download",
       "diskFull": "Device storage full. Remove items to free up space.",
-      "deleteAllConfirm": "Remove {{count}} files ({{size}})? This cannot be undone.",
+      "deleteAllConfirm_one": "Remove {{count}} file ({{size}})? This cannot be undone.",
+      "deleteAllConfirm_other": "Remove {{count}} files ({{size}})? This cannot be undone.",
       "storageTitle": "Offline storage",
       "totalUsed": "Total used",
       "deleteAll": "Delete all",
@@ -179,7 +227,23 @@
       "filesSection": "Files",
       "errorsSection": "Errors",
       "retry": "Retry"
+    },
+    "search": {
+      "placeholder": "Search in Drive",
+      "hint": "Type at least 2 characters",
+      "empty": "No file found",
+      "action": "Search"
+    },
+    "open": {
+      "noApp": "No app on your device can open this file type"
     }
+  },
+  "a11y": {
+    "listView": "List view",
+    "gridView": "Grid view",
+    "folderActions": "Folder actions",
+    "fileActions": "File actions",
+    "removeRecipient": "Remove recipient"
   },
   "errors": {
     "noNetwork": "No connection",

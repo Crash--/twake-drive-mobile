@@ -92,8 +92,11 @@ android {
         applicationId 'com.linagora.twakedrive'
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 1
-        versionName "0.1.0"
+        // Signed release builds override these via env (VERSION_CODE = CI run
+        // number, VERSION_NAME = the vX.Y.Z tag). Local/PR builds keep the
+        // committed defaults so the secret-free test-APK build still works.
+        versionCode System.getenv("VERSION_CODE") ? System.getenv("VERSION_CODE").toInteger() : 1
+        versionName System.getenv("VERSION_NAME") ?: "0.1.0"
 
         buildConfigField "String", "REACT_NATIVE_RELEASE_LEVEL", "\"${findProperty('reactNativeReleaseLevel') ?: 'stable'}\""
     }
@@ -104,15 +107,24 @@ android {
             keyAlias 'androiddebugkey'
             keyPassword 'android'
         }
+        // Env-driven release signing. When KEYSTORE_* are unset (local + PR
+        // test builds) it falls back to the committed debug keystore, so the
+        // secret-free `assembleRelease` still produces an installable APK.
+        release {
+            storeFile file(System.getenv("KEYSTORE_PATH") ?: "debug.keystore")
+            storePassword System.getenv("KEYSTORE_PASSWORD") ?: "android"
+            keyAlias System.getenv("KEY_ALIAS") ?: "androiddebugkey"
+            keyPassword System.getenv("KEY_PASSWORD") ?: "android"
+        }
     }
     buildTypes {
         debug {
             signingConfig signingConfigs.debug
         }
         release {
-            // Caution! In production, you need to generate your own keystore file.
-            // see https://reactnative.dev/docs/signed-apk-android.
-            signingConfig signingConfigs.debug
+            // Signed with the env-driven release config: the real keystore in CI
+            // (decoded from secrets), the debug keystore as a local fallback.
+            signingConfig signingConfigs.release
             def enableShrinkResources = findProperty('android.enableShrinkResourcesInReleaseBuilds') ?: 'false'
             shrinkResources enableShrinkResources.toBoolean()
             minifyEnabled enableMinifyInReleaseBuilds
@@ -129,6 +141,26 @@ android {
     }
     androidResources {
         ignoreAssetsPattern '!.svn:!.git:!.ds_store:!*.scc:!CVS:!thumbs.db:!picasa.ini:!*~'
+    }
+    testOptions {
+        unitTests {
+            includeAndroidResources = true
+            returnDefaultValues = false
+        }
+    }
+}
+
+// @react-native/gradle-plugin's JdkConfiguratorUtils unconditionally pins this project's Kotlin
+// toolchain to Java 17 (see configureJavaToolChains/jvmToolchain(17)), which AGP's unit test task
+// launcher inherits regardless of the JAVA_HOME the build was invoked with. Robolectric >=4.16
+// requires the *test-executing* JVM itself to be Java 21 to instantiate an SDK 36 (Baklava)
+// sandbox ("Android SDK 36 requires Java 21"), so pin just the Test task's launcher to 21 here.
+// Compilation (javac/kotlinc target bytecode) is untouched and stays on RNGP's Java 17 toolchain;
+// Java 17 bytecode runs fine on a Java 21 launcher, so this does not affect the non-Robolectric
+// unit tests (CozyStackApiTest, SessionStoreTest) or the app's real debug/release builds.
+tasks.withType(Test).configureEach {
+    javaLauncher = javaToolchains.launcherFor {
+        languageVersion = JavaLanguageVersion.of(21)
     }
 }
 
@@ -179,4 +211,29 @@ dependencies {
     } else {
         implementation jscFlavor
     }
+
+    implementation("androidx.security:security-crypto:1.1.0-alpha06")
+    implementation("com.squareup.okhttp3:okhttp:4.12.0")
+
+    testImplementation("junit:junit:4.13.2")
+    // Robolectric must be >=4.16 to run against this app's compileSdk/targetSdk 36 (Android
+    // Baklava): 4.14.1 (the version originally pinned here) predates Baklava support and
+    // DefaultSdkPicker hard-fails with "targetSdkVersion=36 > maxSdkVersion=35". Per the
+    // Robolectric 4.16 release notes: "Robolectric 4.16 supports Android Baklava (SDK 36),
+    // and you need to use JDK 21 if running tests with SDK 36 target" — this project's build
+    // already requires JDK 21, so 4.16.1 (latest stable patch on that line, verified on Maven
+    // Central) is the correct fix rather than pinning tests to an older simulated SDK.
+    testImplementation("org.robolectric:robolectric:4.16.1")
+    // Robolectric's RobolectricTestRunner does not pull androidx.test:core transitively;
+    // DocumentCacheTest needs androidx.test.core.app.ApplicationProvider to obtain a
+    // Robolectric-backed Context. 1.6.1 is the latest stable (non-alpha/beta/rc) release,
+    // verified available via the google() repo already declared in the root build.gradle.
+    // testImplementation-only: does not touch the release/compile classpath.
+    testImplementation("androidx.test:core:1.6.1")
+    testImplementation("com.squareup.okhttp3:mockwebserver:4.12.0")
+    testImplementation("org.jetbrains.kotlin:kotlin-test-junit")
+    // Real org.json implementation for plain (non-Robolectric) unit tests: the Android
+    // stub/mockable jar throws "not mocked" for JSONObject/JSONArray methods, which
+    // CozyStackApi and CozyFile rely on for parsing cozy-stack responses.
+    testImplementation("org.json:json:20260522")
 }

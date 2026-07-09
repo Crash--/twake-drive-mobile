@@ -1,7 +1,10 @@
-import * as WebBrowser from 'expo-web-browser'
-
+import { openLoginUrl } from './pkce'
 import { parseCallbackUrl, startOidcFlow } from './oidcFlow'
 import { UserCancelledError } from './types'
+
+jest.mock('./pkce', () => ({
+  openLoginUrl: jest.fn()
+}))
 
 describe('parseCallbackUrl', () => {
   it('extracts fqdn, code, and defaultRedirection from a callback URL', () => {
@@ -37,24 +40,15 @@ describe('parseCallbackUrl', () => {
 describe('startOidcFlow', () => {
   beforeEach(() => jest.clearAllMocks())
 
-  it('returns parsed callback when openAuthSessionAsync resolves with success', async () => {
-    ;(WebBrowser.openAuthSessionAsync as jest.Mock).mockResolvedValueOnce({
-      type: 'success',
-      url: 'cozy://?fqdn=alice.example.com&code=tok'
-    })
+  it('returns the parsed callback when the system browser captures a cozy:// redirect', async () => {
+    ;(openLoginUrl as jest.Mock).mockResolvedValueOnce('cozy://?fqdn=alice.example.com&code=tok')
     const result = await startOidcFlow(new URL('https://login.example.com/oauth'))
     expect(result).toEqual({ fqdn: 'alice.example.com', code: 'tok', defaultRedirection: null })
+    expect(openLoginUrl).toHaveBeenCalledWith('https://login.example.com/oauth')
   })
 
-  it('throws UserCancelledError on cancel', async () => {
-    ;(WebBrowser.openAuthSessionAsync as jest.Mock).mockResolvedValueOnce({ type: 'cancel' })
-    await expect(startOidcFlow(new URL('https://login.example.com/oauth'))).rejects.toBeInstanceOf(
-      UserCancelledError
-    )
-  })
-
-  it('throws UserCancelledError on dismiss', async () => {
-    ;(WebBrowser.openAuthSessionAsync as jest.Mock).mockResolvedValueOnce({ type: 'dismiss' })
+  it('propagates UserCancelledError when the user closes the browser', async () => {
+    ;(openLoginUrl as jest.Mock).mockRejectedValueOnce(new UserCancelledError())
     await expect(startOidcFlow(new URL('https://login.example.com/oauth'))).rejects.toBeInstanceOf(
       UserCancelledError
     )

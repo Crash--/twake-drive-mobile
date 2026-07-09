@@ -2,13 +2,19 @@ import React, { useState } from 'react'
 import { StyleSheet, View } from 'react-native'
 import { IconButton, List, Menu, useTheme } from 'react-native-paper'
 import { formatDistanceToNow } from 'date-fns'
+import { enUS, fr } from 'date-fns/locale'
 import { useTranslation } from 'react-i18next'
+import { useClient } from 'cozy-client'
 
+import { CozyIcon } from '@/ui/icons/CozyIcon'
 import { formatFileSize } from '@/utils/formatters'
 import { useFileSharingStatus } from '@/sharing/SharingProvider'
 import { useIsOnline } from '@/network/useIsOnline'
 import { PinnedBadge } from '@/offline/PinnedBadge'
 import { useOfflineState } from '@/offline/useOfflineState'
+import { isFavorite, toggleFavorite } from '@/files/favorites'
+import { download } from '@/files/download'
+import { triggerPouchReplication } from '@/pouchdb/triggerReplication'
 import { FileThumbnail } from './FileThumbnail'
 import { SharedBadge } from './SharedBadge'
 
@@ -21,6 +27,7 @@ export interface FileItem {
   class?: string
   updated_at?: string
   links?: { tiny?: string; small?: string; medium?: string; large?: string }
+  cozyMetadata?: { favorite?: boolean }
 }
 
 interface Props {
@@ -42,6 +49,11 @@ interface Props {
   onMove?: (file: FileItem) => void
   /** Opens the metadata/details sheet for this row. */
   onInfo?: (file: FileItem) => void
+  /** Called after a favorite toggle so the parent can refetch its query — the
+   * lists are non-reactive, so without this a removed favorite lingers. */
+  onFavoriteChange?: () => void
+  /** Stable id for E2E (Maestro) selection. */
+  testID?: string
 }
 
 export const FileRow = ({
@@ -55,17 +67,26 @@ export const FileRow = ({
   onDelete,
   onTogglePin,
   onMove,
-  onInfo
+  onInfo,
+  onFavoriteChange,
+  testID
 }: Props) => {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const theme = useTheme()
+  const client = useClient()
   const isOnline = useIsOnline()
   const [menuVisible, setMenuVisible] = useState(false)
   const offlineEntry = useOfflineState(file._id)
   const isPinned = !!offlineEntry
+  // "Retirer du hors-ligne" can only apply to a DIRECT pin. A file that's offline
+  // solely because its parent folder is pinned must show "Garder hors-ligne"
+  // (which adds a direct pin) — showing "Retirer" there made onToggleFilePin fall
+  // through and RE-PIN the file instead of removing it (opposite of the label).
+  const isDirectPin = !!offlineEntry?.isDirectPin
   const size = formatFileSize(file.size)
+  const dateLocale = i18n.language?.startsWith('fr') ? fr : enUS
   const date = file.updated_at
-    ? formatDistanceToNow(new Date(file.updated_at), { addSuffix: true })
+    ? formatDistanceToNow(new Date(file.updated_at), { addSuffix: true, locale: dateLocale })
     : ''
   const offlineDescription =
     offlineEntry?.state === 'downloading' && offlineEntry.bytesDownloaded !== undefined
@@ -85,6 +106,7 @@ export const FileRow = ({
 
   return (
     <List.Item
+      testID={testID}
       title={file.name}
       description={description}
       // Honour the `style` Paper passes to `left` (margins, etc.) so the
@@ -93,13 +115,13 @@ export const FileRow = ({
         <View style={[props.style, styles.leftSlot]}>
           {selected ? (
             <View style={[styles.checkmark, { backgroundColor: theme.colors.primary }]}>
-              <List.Icon icon="check" color={theme.colors.onPrimary} />
+              <CozyIcon name="check" size={24} color={theme.colors.onPrimary} />
             </View>
           ) : (
             <View style={styles.thumbWrap}>
               <FileThumbnail file={file} size={40} />
               <SharedBadge status={sharingStatus} />
-              <PinnedBadge entry={offlineEntry} />
+              <PinnedBadge entry={offlineEntry} testID="pinned-badge" />
             </View>
           )}
         </View>
@@ -112,17 +134,18 @@ export const FileRow = ({
             anchor={
               <IconButton
                 {...props}
-                icon="dots-vertical"
+                icon={p => <CozyIcon name="dotsVertical" size={p?.size ?? 24} color={p?.color} />}
                 onPress={() => setMenuVisible(true)}
-                accessibilityLabel="file actions"
+                accessibilityLabel={t('a11y.fileActions')}
+                testID="file-actions"
               />
             }
           >
             {onTogglePin ? (
               <Menu.Item
-                leadingIcon={isPinned ? 'cloud-off-outline' : 'cloud-download-outline'}
-                title={t(isPinned ? 'drive.offline.unpin' : 'drive.offline.pin')}
-                disabled={!isPinned && !isOnline}
+                leadingIcon={isDirectPin ? 'cloud-off-outline' : 'cloud-download-outline'}
+                title={t(isDirectPin ? 'drive.offline.unpin' : 'drive.offline.pin')}
+                disabled={!isDirectPin && !isOnline}
                 onPress={() => {
                   setMenuVisible(false)
                   onTogglePin(file)
@@ -131,7 +154,9 @@ export const FileRow = ({
             ) : null}
             {onShare ? (
               <Menu.Item
-                leadingIcon="share-variant"
+                leadingIcon={() => (
+                  <CozyIcon name="shareExternal" size={24} color={theme.colors.onSurface} />
+                )}
                 title={t('drive.fileMeta.share')}
                 disabled={!isOnline}
                 onPress={() => {
@@ -142,7 +167,9 @@ export const FileRow = ({
             ) : null}
             {onRename ? (
               <Menu.Item
-                leadingIcon="pencil-outline"
+                leadingIcon={() => (
+                  <CozyIcon name="rename" size={24} color={theme.colors.onSurface} />
+                )}
                 title={t('drive.fileMeta.rename')}
                 disabled={!isOnline}
                 onPress={() => {
@@ -153,7 +180,9 @@ export const FileRow = ({
             ) : null}
             {onRestore ? (
               <Menu.Item
-                leadingIcon="restore"
+                leadingIcon={() => (
+                  <CozyIcon name="restore" size={24} color={theme.colors.onSurface} />
+                )}
                 title={t('drive.trashActions.restore')}
                 disabled={!isOnline}
                 onPress={() => {
@@ -164,7 +193,9 @@ export const FileRow = ({
             ) : null}
             {onDelete ? (
               <Menu.Item
-                leadingIcon="trash-can-outline"
+                leadingIcon={() => (
+                  <CozyIcon name="trash" size={24} color={theme.colors.onSurface} />
+                )}
                 title={t('drive.fileMeta.delete')}
                 disabled={!isOnline}
                 onPress={() => {
@@ -175,7 +206,9 @@ export const FileRow = ({
             ) : null}
             {onMove ? (
               <Menu.Item
-                leadingIcon="folder-move-outline"
+                leadingIcon={() => (
+                  <CozyIcon name="moveto" size={24} color={theme.colors.onSurface} />
+                )}
                 title={t('drive.fileMeta.move')}
                 disabled={!isOnline}
                 onPress={() => {
@@ -186,7 +219,9 @@ export const FileRow = ({
             ) : null}
             {onInfo ? (
               <Menu.Item
-                leadingIcon="information-outline"
+                leadingIcon={() => (
+                  <CozyIcon name="info" size={24} color={theme.colors.onSurface} />
+                )}
                 title={t('drive.fileMeta.info')}
                 onPress={() => {
                   setMenuVisible(false)
@@ -194,6 +229,44 @@ export const FileRow = ({
                 }}
               />
             ) : null}
+            <Menu.Item
+              leadingIcon={() => (
+                <CozyIcon
+                  name={
+                    isFavorite(file as Parameters<typeof isFavorite>[0]) ? 'star' : 'starOutline'
+                  }
+                  size={24}
+                  color={theme.colors.onSurface}
+                />
+              )}
+              title={t(
+                isFavorite(file as Parameters<typeof isFavorite>[0])
+                  ? 'drive.fileMeta.unfavorite'
+                  : 'drive.fileMeta.favorite'
+              )}
+              onPress={() => {
+                setMenuVisible(false)
+                if (!client) return
+                const next = !isFavorite(file as Parameters<typeof isFavorite>[0])
+                void toggleFavorite(client, file as Parameters<typeof toggleFavorite>[1], next)
+                  .then(() => {
+                    triggerPouchReplication(client)
+                    onFavoriteChange?.()
+                  })
+                  .catch(e => console.error('[FileRow] toggleFavorite failed', e))
+              }}
+            />
+            <Menu.Item
+              leadingIcon={() => (
+                <CozyIcon name="download" size={24} color={theme.colors.onSurface} />
+              )}
+              title={t('drive.fileMeta.download')}
+              onPress={() => {
+                setMenuVisible(false)
+                if (!client) return
+                void download(client, file)
+              }}
+            />
           </Menu>
         ) : null
       }

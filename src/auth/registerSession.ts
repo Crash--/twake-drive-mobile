@@ -1,27 +1,8 @@
-import * as WebBrowser from 'expo-web-browser'
-import * as Crypto from 'expo-crypto'
 import CozyClient from 'cozy-client'
 
-import { APP_SCOPES, APP_SCOPE_STRING } from './scopes'
-import { OidcCallback, Session, OAuthOptions, OAuthToken, UserCancelledError } from './types'
-
-const base64UrlEncode = (bytes: Uint8Array): string => {
-  let binary = ''
-  for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i])
-  return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '')
-}
-
-const generatePkce = async (): Promise<{ codeVerifier: string; codeChallenge: string }> => {
-  const verifierBytes = Crypto.getRandomBytes(32)
-  const codeVerifier = base64UrlEncode(verifierBytes)
-  const challengeB64 = await Crypto.digestStringAsync(
-    Crypto.CryptoDigestAlgorithm.SHA256,
-    codeVerifier,
-    { encoding: Crypto.CryptoEncoding.BASE64 }
-  )
-  const codeChallenge = challengeB64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '')
-  return { codeVerifier, codeChallenge }
-}
+import { APP_SCOPES, APP_SCOPE_STRING, FLAGSHIP_SCOPES } from './scopes'
+import { OidcCallback, Session, OAuthOptions, OAuthToken } from './types'
+import { generatePkce, openAuthorizeUrl } from './pkce'
 
 interface OidcResponse {
   session_code?: string
@@ -42,60 +23,70 @@ const buildOauthOptions = (): Omit<OAuthOptions, 'clientID' | 'clientSecret'> =>
   scopes: [...APP_SCOPES]
 })
 
-const normalizeRedirectUrl = (raw: string): string => {
-  let url = raw
-  if (url.startsWith('cozy:?')) url = url.replace('cozy:?', 'cozy://?')
-  url = url.replace(/%23$/i, '').replace(/#$/, '')
-  return url
-}
-
-const openAuthorizeUrl = async (url: string): Promise<string> => {
-  console.log('[registerSession] opening authorize URL', url)
-  const result = await WebBrowser.openAuthSessionAsync(url, REDIRECT_URL, {
-    showInRecents: false
-  })
-  console.log('[registerSession] authorize result', JSON.stringify(result))
-  if (result.type === 'success' && result.url) {
-    const cleaned = normalizeRedirectUrl(result.url)
-    if (cleaned !== result.url) console.log('[registerSession] cleaned URL', cleaned)
-    return cleaned
-  }
-  throw new UserCancelledError()
-}
-
-export const registerSession = async (callback: OidcCallback): Promise<Session> => {
+export const registerSession = async (
+  callback: OidcCallback,
+  existing?: OAuthOptions
+): Promise<Session> => {
   const uri = `https://${callback.fqdn}`
-  console.log('[registerSession] init client', uri)
+  console.log(
+    '[registerSession] init client',
+    uri,
+    existing?.clientID ? '(reuse client)' : '(new client)'
+  )
 
   const client = new CozyClient({
     uri,
-    oauth: buildOauthOptions(),
-    scope: [...APP_SCOPES],
+    oauth: existing ?? buildOauthOptions(),
+    // Request the flagship `*` scope. It sets stackClient.scope, which
+    // getAuthCodeURL uses for the /auth/authorize dance below, so the token we
+    // mint is full-access and therefore session_code-capable — the editors' web
+    // apps need session_code, which the stack only grants to a flagship token.
+    scope: [...FLAGSHIP_SCOPES],
     appMetadata: { slug: 'twake-drive-mobile', version: '0.1.0' }
-  })
+  } as ConstructorParameters<typeof CozyClient>[0] & { scope: string[] })
 
   const stackClient = client.getStackClient()
-  try {
-    stackClient.setUri(uri)
-    await stackClient.register(uri)
-  } catch (e) {
-    console.error('[registerSession] register failed', (e as Error).message, e)
-    throw e
+  stackClient.setUri(uri)
+
+  if (existing?.clientID) {
+    // Reuse stored registration — skip register() which throws if already registered
+    // and would create a new client_id (dropping any flagship flag on the old one).
+    stackClient.setOAuthOptions(existing)
+    console.log('[registerSession] reusing existing client', existing.clientID)
+  } else {
+    try {
+      await stackClient.register(uri)
+    } catch (e) {
+      console.error('[registerSession] register failed', (e as Error).message, e)
+      throw e
+    }
   }
 
   const oauthOptions = stackClient.oauthOptions as OAuthOptions
-  console.log('[registerSession] oauth client registered', oauthOptions.clientID)
+  console.log('[registerSession] oauth client ready', oauthOptions.clientID)
 
   let oidcResponse: OidcResponse
   try {
+    // Ask for the flagship `*` scope. On an OIDC instance the stack replies with a
+    // session_code (not a direct access_token); we exchange it through the
+    // /auth/authorize dance below — the flow that, the first time on a device,
+    // shows the "application not certified" email-code screen and certifies this
+    // client as flagship. Certification happens once here, in the system browser
+    // whose redirect back to the app works — unlike the in-app WebView cert, which
+    // LemonLDAP could not redirect back from. The minted token is `*`-scoped, so
+    // getSessionCode() succeeds and editors open without any further re-auth.
     oidcResponse = (await stackClient.fetchJSON('POST', '/oidc/access_token', {
       code: callback.code,
       client_id: oauthOptions.clientID,
       client_secret: oauthOptions.clientSecret,
-      scope: APP_SCOPE_STRING
+      scope: '*'
     })) as OidcResponse
   } catch (e) {
-    console.error('[registerSession] /oidc/access_token failed', (e as Error).message, e)
+    const msg = (e as Error).message ?? ''
+    if (existing?.clientID && /must be registered|invalid_client/i.test(msg)) {
+      return await registerSession(callback, undefined)
+    }
+    console.error('[registerSession] /oidc/access_token failed', msg, e)
     throw e
   }
   console.log('[registerSession] oidc response keys', Object.keys(oidcResponse).join(','))

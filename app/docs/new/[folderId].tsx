@@ -1,44 +1,39 @@
-import React, { useEffect, useState } from 'react'
-import { StyleSheet } from 'react-native'
-import { WebView } from 'react-native-webview'
-import { useLocalSearchParams } from 'expo-router'
+import React, { useEffect, useRef, useState } from 'react'
+import * as WebBrowser from 'expo-web-browser'
+import { useLocalSearchParams, useRouter } from 'expo-router'
 import { useClient } from 'cozy-client'
 
 import { ScreenContainer } from '@/ui/ScreenContainer'
+import { EditorHeader } from '@/ui/EditorHeader'
 import { ErrorState } from '@/ui/ErrorState'
 import { LoadingState } from '@/ui/LoadingState'
-import { buildCozyAppUrl, getSessionCode } from '@/files/cozyAppLink'
-
-// Mirrors twake-drive web's CreateDocsItem flow: redirect the user to the
-// cozy `docs` web app with the route `/bridge/docs/new/<folderId>`. The
-// docs app handles document creation server-side and then opens the new
-// document. No externalId lookup is needed since the document does not
-// exist yet.
+import { buildCozyAppUrl } from '@/files/cozyAppLink'
+import { useSessionCode } from '@/auth/useSessionCode'
 
 export default function DocsNewScreen() {
   const { folderId } = useLocalSearchParams<{ folderId: string }>()
   const client = useClient()
-  const [editorUrl, setEditorUrl] = useState<string | null>(null)
+  const router = useRouter()
+  const fetchSessionCode = useSessionCode()
   const [error, setError] = useState<string | null>(null)
   const [reloadTick, setReloadTick] = useState(0)
+  const openedRef = useRef(false)
 
   useEffect(() => {
     let cancelled = false
     const run = async (): Promise<void> => {
       if (!client || !folderId) return
+      if (openedRef.current) return
+      openedRef.current = true
       try {
         const stackUri = client.getStackClient().uri as string
-        const sessionCode = await getSessionCode(client)
-        const url = buildCozyAppUrl(
-          stackUri,
-          'docs',
-          sessionCode,
-          `/bridge/docs/new/${folderId}`
-        )
-        console.log('[DocsNewScreen] editorUrl', url)
-        if (!cancelled) setEditorUrl(url)
+        const sessionCode = await fetchSessionCode()
+        const url = buildCozyAppUrl(stackUri, 'docs', sessionCode, `/bridge/docs/new/${folderId}`)
+        await WebBrowser.openBrowserAsync(url)
+        if (!cancelled) router.back()
       } catch (e) {
         console.error('[DocsNewScreen] failed', e)
+        openedRef.current = false
         if (!cancelled) setError((e as Error).message ?? 'Failed to load')
       }
     }
@@ -46,43 +41,18 @@ export default function DocsNewScreen() {
     return () => {
       cancelled = true
     }
-  }, [client, folderId, reloadTick])
+  }, [client, folderId, reloadTick, fetchSessionCode, router])
+
+  const retry = () => {
+    setError(null)
+    openedRef.current = false
+    setReloadTick(tick => tick + 1)
+  }
 
   return (
     <ScreenContainer>
-      {error ? (
-        <ErrorState
-          message={error}
-          onRetry={() => {
-            setError(null)
-            setEditorUrl(null)
-            setReloadTick(tick => tick + 1)
-          }}
-        />
-      ) : !editorUrl ? (
-        <LoadingState />
-      ) : (
-        <WebView
-          originWhitelist={['*']}
-          javaScriptEnabled
-          domStorageEnabled
-          allowsInlineMediaPlayback
-          sharedCookiesEnabled
-          source={{ uri: editorUrl }}
-          style={styles.webview}
-          onMessage={event => {
-            console.log('[DocsNewScreen] webview message', event.nativeEvent.data)
-          }}
-          onError={syntheticEvent => {
-            console.error('[DocsNewScreen] webview error', syntheticEvent.nativeEvent)
-          }}
-        />
-      )}
+      <EditorHeader onBack={() => router.back()} />
+      {error ? <ErrorState message={error} onRetry={retry} /> : <LoadingState />}
     </ScreenContainer>
   )
 }
-
-const styles = StyleSheet.create({
-  container: { flex: 1 },
-  webview: { flex: 1 }
-})

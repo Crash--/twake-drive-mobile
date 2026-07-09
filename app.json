@@ -2,7 +2,7 @@
   "expo": {
     "name": "Twake Drive",
     "slug": "twake-drive-mobile",
-    "version": "0.1.0",
+    "version": "0.2.2",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "scheme": [
@@ -22,7 +22,9 @@
       "supportsTablet": true,
       "bundleIdentifier": "com.linagora.twakedrive",
       "infoPlist": {
-        "UIBackgroundModes": ["audio"]
+        "UIBackgroundModes": [
+          "audio"
+        ]
       }
     },
     "android": {
@@ -38,7 +40,13 @@
       "expo-web-browser",
       "expo-localization",
       "expo-asset",
-      "expo-video",
+      [
+        "expo-video",
+        {
+          "supportsBackgroundPlayback": true,
+          "supportsPictureInPicture": true
+        }
+      ],
       "expo-audio",
       [
         "expo-build-properties",
@@ -47,7 +55,9 @@
             "deploymentTarget": "16.0"
           }
         }
-      ]
+      ],
+      "./plugins/withTwakeDocumentsProvider",
+      "./plugins/withTwakeShareIntent"
     ],
     "experiments": {
       "typedRoutes": true

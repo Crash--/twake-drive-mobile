@@ -1,30 +1,24 @@
-import React, { useEffect, useState } from 'react'
-import { StyleSheet } from 'react-native'
-import { WebView } from 'react-native-webview'
-import { useLocalSearchParams } from 'expo-router'
+import React, { useEffect, useRef, useState } from 'react'
+import * as WebBrowser from 'expo-web-browser'
+import { useLocalSearchParams, useRouter } from 'expo-router'
 import { useClient, useQuery } from 'cozy-client'
 
 import { ScreenContainer } from '@/ui/ScreenContainer'
+import { EditorHeader } from '@/ui/EditorHeader'
 import { ErrorState } from '@/ui/ErrorState'
 import { LoadingState } from '@/ui/LoadingState'
 import { fileByIdQuery, fileByIdQueryAs } from '@/client/queries'
-import { buildCozyAppUrl, getSessionCode } from '@/files/cozyAppLink'
-
-// Mirrors twake-drive web's "docs" file-type routing: open the cozy `docs`
-// web app inside a WebView with a session_code so the docs editor renders
-// already authenticated. The hash `/bridge/docs/<externalId>` is the docs
-// app route for a single document, identical to what computePath returns
-// for `type === 'docs'` in twake-drive web (helpers.ts).
-//
-// The externalId is read from the file's metadata (see
-// cozy-client/dist/models/file.js → isDocs(file)).
+import { buildCozyAppUrl } from '@/files/cozyAppLink'
+import { useSessionCode } from '@/auth/useSessionCode'
 
 export default function DocsScreen() {
   const { fileId } = useLocalSearchParams<{ fileId: string }>()
   const client = useClient()
-  const [editorUrl, setEditorUrl] = useState<string | null>(null)
+  const router = useRouter()
+  const fetchSessionCode = useSessionCode()
   const [error, setError] = useState<string | null>(null)
   const [reloadTick, setReloadTick] = useState(0)
+  const openedRef = useRef(false)
 
   const fileLookup = useQuery(fileByIdQuery(fileId ?? ''), {
     as: fileByIdQueryAs(fileId ?? ''),
@@ -32,23 +26,24 @@ export default function DocsScreen() {
   })
   const lookupData = fileLookup.data
   const lookupDoc = Array.isArray(lookupData) ? lookupData[0] : lookupData
-  const externalId = (
-    lookupDoc as { metadata?: { externalId?: string } } | null | undefined
-  )?.metadata?.externalId
+  const externalId = (lookupDoc as { metadata?: { externalId?: string } } | null | undefined)
+    ?.metadata?.externalId
 
   useEffect(() => {
     let cancelled = false
     const run = async () => {
-      if (!client || !fileId) return
-      if (!externalId) return
+      if (!client || !fileId || !externalId) return
+      if (openedRef.current) return
+      openedRef.current = true
       try {
         const stackUri = client.getStackClient().uri as string
-        const sessionCode = await getSessionCode(client)
+        const sessionCode = await fetchSessionCode()
         const url = buildCozyAppUrl(stackUri, 'docs', sessionCode, `/bridge/docs/${externalId}`)
-        console.log('[DocsScreen] editorUrl', url)
-        if (!cancelled) setEditorUrl(url)
+        await WebBrowser.openBrowserAsync(url)
+        if (!cancelled) router.back()
       } catch (e) {
         console.error('[DocsScreen] failed', e)
+        openedRef.current = false
         if (!cancelled) setError((e as Error).message ?? 'Failed to load')
       }
     }
@@ -56,54 +51,26 @@ export default function DocsScreen() {
     return () => {
       cancelled = true
     }
-  }, [client, fileId, externalId, reloadTick])
+  }, [client, fileId, externalId, reloadTick, fetchSessionCode, router])
 
-  const missingExternalId =
-    fileLookup.fetchStatus === 'loaded' && !!lookupDoc && !externalId
+  const missingExternalId = fileLookup.fetchStatus === 'loaded' && !!lookupDoc && !externalId
+
+  const retry = () => {
+    setError(null)
+    openedRef.current = false
+    setReloadTick(t => t + 1)
+  }
 
   return (
     <ScreenContainer>
+      <EditorHeader onBack={() => router.back()} />
       {error ? (
-        <ErrorState
-          message={error}
-          onRetry={() => {
-            setError(null)
-            setEditorUrl(null)
-            setReloadTick(t => t + 1)
-          }}
-        />
+        <ErrorState message={error} onRetry={retry} />
       ) : missingExternalId ? (
-        <ErrorState
-          message="Could not resolve docs externalId"
-          onRetry={() => {
-            setEditorUrl(null)
-            setReloadTick(t => t + 1)
-          }}
-        />
-      ) : !editorUrl ? (
-        <LoadingState />
+        <ErrorState message="Could not resolve docs externalId" onRetry={retry} />
       ) : (
-        <WebView
-          originWhitelist={['*']}
-          javaScriptEnabled
-          domStorageEnabled
-          allowsInlineMediaPlayback
-          sharedCookiesEnabled
-          source={{ uri: editorUrl }}
-          style={styles.webview}
-          onMessage={event => {
-            console.log('[DocsScreen] webview message', event.nativeEvent.data)
-          }}
-          onError={syntheticEvent => {
-            console.error('[DocsScreen] webview error', syntheticEvent.nativeEvent)
-          }}
-        />
+        <LoadingState />
       )}
     </ScreenContainer>
   )
 }
-
-const styles = StyleSheet.create({
-  container: { flex: 1 },
-  webview: { flex: 1 }
-})

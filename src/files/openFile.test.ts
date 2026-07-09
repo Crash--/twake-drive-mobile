@@ -2,6 +2,7 @@ import * as FileSystem from 'expo-file-system/legacy'
 import FileViewer from 'react-native-file-viewer'
 
 import { openFileNatively } from './openFile'
+import { NoCompatibleAppError } from './errors'
 import { OfflineFilesStore } from '@/offline/OfflineFilesStore'
 
 const mockIsPinnedAndDownloaded = OfflineFilesStore.isPinnedAndDownloaded as jest.Mock
@@ -66,9 +67,9 @@ describe('openFileNatively', () => {
   })
 
   it('throws when no token is available', async () => {
-    await expect(
-      openFileNatively(makeClient(null), { _id: 'abc', name: 't.pdf' })
-    ).rejects.toThrow(/access token/)
+    await expect(openFileNatively(makeClient(null), { _id: 'abc', name: 't.pdf' })).rejects.toThrow(
+      /access token/
+    )
   })
 
   it('throws when download status is non-2xx', async () => {
@@ -76,16 +77,16 @@ describe('openFileNatively', () => {
       status: 404,
       uri: 'file:///cache/twake-drive/abc-test.pdf'
     })
-    await expect(
-      openFileNatively(makeClient(), { _id: 'abc', name: 't.pdf' })
-    ).rejects.toThrow(/HTTP 404/)
+    await expect(openFileNatively(makeClient(), { _id: 'abc', name: 't.pdf' })).rejects.toThrow(
+      /HTTP 404/
+    )
   })
 
   it('copies the pinned blob to cache (with extension) then opens it', async () => {
     mockIsPinnedAndDownloaded.mockReturnValueOnce(true)
     ;(FileSystem.getInfoAsync as jest.Mock)
       .mockResolvedValueOnce({ exists: true, size: 1024 }) // blob check
-      .mockResolvedValueOnce({ exists: false })            // alias check (missing)
+      .mockResolvedValueOnce({ exists: false }) // alias check (missing)
       .mockResolvedValueOnce({ exists: true, size: 1024 }) // alias post-copy
     await openFileNatively(makeClient(), { _id: 'abc', name: 't.pdf' })
     expect(FileSystem.downloadAsync).not.toHaveBeenCalled()
@@ -116,9 +117,33 @@ describe('openFileNatively', () => {
   it('throws when the pinned blob is missing on disk', async () => {
     mockIsPinnedAndDownloaded.mockReturnValueOnce(true)
     ;(FileSystem.getInfoAsync as jest.Mock).mockResolvedValueOnce({ exists: false })
+    await expect(openFileNatively(makeClient(), { _id: 'abc', name: 't.pdf' })).rejects.toThrow(
+      /missing on disk/
+    )
+  })
+
+  it('translates FileViewer "no app associated" rejection into NoCompatibleAppError', async () => {
+    ;(FileSystem.downloadAsync as jest.Mock).mockResolvedValueOnce({
+      status: 200,
+      uri: 'file:///cache/twake-drive/abc-t.bin'
+    })
+    ;(FileViewer.open as jest.Mock).mockRejectedValueOnce(
+      new Error('No app associated with this mime type')
+    )
     await expect(
-      openFileNatively(makeClient(), { _id: 'abc', name: 't.pdf' })
-    ).rejects.toThrow(/missing on disk/)
+      openFileNatively(makeClient(), { _id: 'abc', name: 't.bin' })
+    ).rejects.toBeInstanceOf(NoCompatibleAppError)
+  })
+
+  it('passes a generic FileViewer error through unchanged', async () => {
+    ;(FileSystem.downloadAsync as jest.Mock).mockResolvedValueOnce({
+      status: 200,
+      uri: 'file:///cache/twake-drive/abc-t.bin'
+    })
+    ;(FileViewer.open as jest.Mock).mockRejectedValueOnce(new Error('kaboom'))
+    await expect(openFileNatively(makeClient(), { _id: 'abc', name: 't.bin' })).rejects.toThrow(
+      /kaboom/
+    )
   })
 
   it('sanitizes filename slashes', async () => {

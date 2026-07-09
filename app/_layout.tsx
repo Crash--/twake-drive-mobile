@@ -6,21 +6,40 @@ import { Provider as PaperProvider } from 'react-native-paper'
 import { SafeAreaProvider } from 'react-native-safe-area-context'
 import { GestureHandlerRootView } from 'react-native-gesture-handler'
 import { Stack } from 'expo-router'
-import { CozyProvider } from 'cozy-client'
+import { StatusBar } from 'expo-status-bar'
 import { I18nextProvider } from 'react-i18next'
+
+import {
+  useFonts,
+  Inter_400Regular,
+  Inter_500Medium,
+  Inter_600SemiBold,
+  Inter_700Bold
+} from '@expo-google-fonts/inter'
 
 import i18n from '@/i18n'
 import { AuthProvider, useAuth } from '@/auth/useAuth'
 import { darkTheme, lightTheme } from '@/ui/theme'
+import { withInterFonts } from '@/ui/fonts'
 import { attachRevocationListener } from '@/auth/revocationListener'
 import { ErrorBoundary } from '@/ui/ErrorBoundary'
 import { PiPSessionProvider } from '@/preview/PiPSession'
 import { SharingProvider } from '@/sharing/SharingProvider'
+import { useThemePreference } from '@/preferences/themePreference'
+import { AppProviderTree } from './_AppProviderTree'
 
 const InnerLayout = () => {
   const colorScheme = useColorScheme()
-  const theme = colorScheme === 'dark' ? darkTheme : lightTheme
+  const { pref: themePref } = useThemePreference()
+  const activeScheme = themePref === 'system' ? colorScheme : themePref
+  const theme = activeScheme === 'dark' ? darkTheme : lightTheme
   const { client, logout } = useAuth()
+  const [fontsLoaded] = useFonts({
+    Inter_400Regular,
+    Inter_500Medium,
+    Inter_600SemiBold,
+    Inter_700Bold
+  })
 
   useEffect(() => {
     if (!client) return
@@ -29,10 +48,17 @@ const InnerLayout = () => {
     })
   }, [client, logout])
 
+  if (!fontsLoaded) return null
+
   const content = (
     <SafeAreaProvider>
+      {/* Render the system status bar with theme-adaptive icons (dark on the
+          light UI, light in dark mode) so the time/wifi/battery stay visible —
+          without this the default light icons were invisible on the white app
+          background under edge-to-edge. Applies to Android and iOS. */}
+      <StatusBar style="auto" />
       <GestureHandlerRootView style={{ flex: 1 }}>
-        <PaperProvider theme={theme}>
+        <PaperProvider theme={withInterFonts(theme)}>
           <I18nextProvider i18n={i18n}>
             <PiPSessionProvider>
               <SharingProvider>
@@ -65,6 +91,10 @@ const InnerLayout = () => {
                       options={{ presentation: 'pageSheet', animation: 'slide_from_bottom' }}
                     />
                     <Stack.Screen
+                      name="import"
+                      options={{ presentation: 'pageSheet', animation: 'slide_from_bottom' }}
+                    />
+                    <Stack.Screen
                       name="onlyoffice/[fileId]"
                       options={{ presentation: 'pageSheet', animation: 'slide_from_bottom' }}
                     />
@@ -80,6 +110,11 @@ const InnerLayout = () => {
                       name="docs/new/[folderId]"
                       options={{ presentation: 'pageSheet', animation: 'slide_from_bottom' }}
                     />
+                    <Stack.Screen
+                      name="settings"
+                      options={{ presentation: 'pageSheet', animation: 'slide_from_bottom' }}
+                    />
+                    <Stack.Screen name="search" options={{ animation: 'slide_from_bottom' }} />
                   </Stack>
                 </ErrorBoundary>
               </SharingProvider>
@@ -90,7 +125,11 @@ const InnerLayout = () => {
     </SafeAreaProvider>
   )
 
-  return client ? <CozyProvider client={client}>{content}</CozyProvider> : content
+  // AppProviderTree wraps `content` with PendingShareProvider positioned
+  // OUTSIDE the `client` auth conditional — see app/_AppProviderTree.tsx for
+  // why that placement matters (and app/_AppProviderTree.test.tsx for the
+  // regression test that guards it).
+  return <AppProviderTree>{content}</AppProviderTree>
 }
 
 export default function RootLayout() {
