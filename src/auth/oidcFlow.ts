@@ -1,4 +1,4 @@
-import { openAuthorizeUrl } from './pkce'
+import { openLoginUrl } from './pkce'
 import { OidcCallback } from './types'
 
 export const parseCallbackUrl = (callbackUrl: string): OidcCallback => {
@@ -14,6 +14,6 @@ export const parseCallbackUrl = (callbackUrl: string): OidcCallback => {
 }
 
 export const startOidcFlow = async (loginUri: URL): Promise<OidcCallback> => {
-  const redirectUrl = await openAuthorizeUrl(loginUri.toString())
+  const redirectUrl = await openLoginUrl(loginUri.toString())
   return parseCallbackUrl(redirectUrl)
 }

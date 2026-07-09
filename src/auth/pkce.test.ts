@@ -1,7 +1,7 @@
 import * as WebBrowser from 'expo-web-browser'
 import * as Linking from 'expo-linking'
 
-import { openAuthorizeUrl } from './pkce'
+import { openLoginUrl, openAuthorizeUrl } from './pkce'
 import { UserCancelledError } from './types'
 
 jest.mock('expo-web-browser', () => ({
@@ -19,7 +19,7 @@ const wb = WebBrowser as unknown as {
 }
 const linking = Linking as unknown as { addEventListener: jest.Mock }
 
-describe('openAuthorizeUrl', () => {
+describe('openLoginUrl (shared-jar Custom Tab)', () => {
   let urlHandler: (e: { url: string }) => void
   let remove: jest.Mock
 
@@ -32,44 +32,49 @@ describe('openAuthorizeUrl', () => {
         return { remove }
       }
     )
-    // Android's dismissBrowser returns void (not a Promise). Mimic that here so a
-    // regression that calls `.catch` on it (which crashed the real login) fails.
     wb.dismissBrowser.mockReturnValue(undefined)
   })
 
-  // The certification page emails a 6-digit code, so the user leaves to their mail
-  // app and comes back. A plain Custom Tab survives that; openAuthSessionAsync does
-  // not (it resolves {type:'dismiss'} on refocus), so we must never use it here.
-  it('opens a plain Custom Tab (openBrowserAsync), never an auth session', () => {
+  it('opens openBrowserAsync (SFVC jar), never an auth session', () => {
     wb.openBrowserAsync.mockReturnValue(new Promise(() => undefined))
-    void openAuthorizeUrl('https://alice.example.com/auth/authorize')
-    expect(wb.openBrowserAsync).toHaveBeenCalledWith('https://alice.example.com/auth/authorize', {
+    void openLoginUrl('https://login.example.com/oauth')
+    expect(wb.openBrowserAsync).toHaveBeenCalledWith('https://login.example.com/oauth', {
       showInRecents: true
     })
     expect(wb.openAuthSessionAsync).not.toHaveBeenCalled()
   })
 
   it('resolves with the cozy:// redirect captured via the deep-link listener', async () => {
-    // Tab stays open (the mail excursion): the completion signal is the deep link.
     wb.openBrowserAsync.mockReturnValue(new Promise(() => undefined))
-    const p = openAuthorizeUrl('https://x/auth/authorize')
+    const p = openLoginUrl('https://x/oauth')
     urlHandler({ url: 'cozy://?code=abc123' })
     await expect(p).resolves.toBe('cozy://?code=abc123')
     expect(remove).toHaveBeenCalled()
-    expect(wb.dismissBrowser).toHaveBeenCalled()
   })
 
-  it('rejects UserCancelledError when the tab is closed without certifying', async () => {
+  it('lets a redirect win over a racing tab-close', async () => {
     wb.openBrowserAsync.mockResolvedValue({ type: 'cancel' })
+    const p = openLoginUrl('https://x/oauth')
+    urlHandler({ url: 'cozy://?code=win' })
+    await expect(p).resolves.toBe('cozy://?code=win')
+  })
+})
+
+describe('openAuthorizeUrl (native auth session)', () => {
+  beforeEach(() => jest.clearAllMocks())
+
+  it('opens openAuthSessionAsync and returns the cozy:// redirect on success', async () => {
+    wb.openAuthSessionAsync.mockResolvedValueOnce({ type: 'success', url: 'cozy://?code=abc' })
+    await expect(openAuthorizeUrl('https://x/auth/authorize')).resolves.toBe('cozy://?code=abc')
+    expect(wb.openAuthSessionAsync).toHaveBeenCalledWith('https://x/auth/authorize', 'cozy://', {
+      showInRecents: false
+    })
+  })
+
+  it('rejects UserCancelledError when the session is cancelled', async () => {
+    wb.openAuthSessionAsync.mockResolvedValueOnce({ type: 'cancel' })
     await expect(openAuthorizeUrl('https://x/auth/authorize')).rejects.toBeInstanceOf(
       UserCancelledError
     )
-  })
-
-  it('lets a redirect win over a racing tab-close (no false cancel)', async () => {
-    wb.openBrowserAsync.mockResolvedValue({ type: 'dismiss' })
-    const p = openAuthorizeUrl('https://x/auth/authorize')
-    urlHandler({ url: 'cozy://?code=win' })
-    await expect(p).resolves.toBe('cozy://?code=win')
   })
 })

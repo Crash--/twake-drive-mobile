@@ -32,52 +32,45 @@ export const normalizeRedirectUrl = (raw: string): string => {
 }
 
 export const openAuthorizeUrl = async (url: string): Promise<string> => {
-  console.log('[auth] opening authorize URL', url)
-  // The flagship certification page emails a 6-digit code, so the user MUST leave
-  // to their mail app and come back to type it. `openAuthSessionAsync` resolves
-  // `{type:'dismiss'}` the instant the app is refocused, which aborts the flow and
-  // bounces the user back to the start — an inescapable loop on a mobile-only
-  // device. A plain Custom Tab (`openBrowserAsync`) survives that excursion: it
-  // stays open while the user reads the code. The cert finishes by redirecting to
-  // `cozy://`, which reopens the app and fires a Linking `url` event — that deep
-  // link is the reliable completion signal (openBrowserAsync never returns the
-  // redirect URL itself). `showInRecents` keeps the tab in the app switcher so the
-  // user can return to it after checking their mail.
+  console.log('[auth] opening authorize URL', url.split('?')[0])
+  const result = await WebBrowser.openAuthSessionAsync(url, REDIRECT_URL, {
+    showInRecents: false
+  })
+  if (result.type === 'success' && result.url) {
+    return normalizeRedirectUrl(result.url)
+  }
+  throw new UserCancelledError()
+}
+
+export const openLoginUrl = async (url: string): Promise<string> => {
+  console.log('[auth] opening login URL', url.split('?')[0])
   return await new Promise<string>((resolve, reject) => {
     let settled = false
-    let linkSub: ReturnType<typeof Linking.addEventListener> | undefined
-
-    const done = (finish: () => void): void => {
+    let sub: ReturnType<typeof Linking.addEventListener> | undefined
+    let timer: ReturnType<typeof setTimeout> | undefined
+    const finish = (run: () => void): void => {
       if (settled) return
       settled = true
-      linkSub?.remove()
-      // Best-effort close of the Custom Tab. dismissBrowser() resolves a Promise
-      // on iOS but returns void on Android, so `.catch` on the result throws
-      // "Cannot read property 'catch' of undefined" there — which previously ate
-      // the resolve() below and hung the login. Wrap it so it can never throw.
+      sub?.remove()
+      if (timer) clearTimeout(timer)
       try {
         void Promise.resolve(WebBrowser.dismissBrowser()).catch(() => undefined)
       } catch {
-        // ignore — dismissing the browser is optional
+        // dismissing the tab is best-effort
       }
-      finish()
+      run()
     }
-
-    linkSub = Linking.addEventListener('url', ({ url: incoming }) => {
-      if (incoming && incoming.startsWith('cozy:')) {
+    sub = Linking.addEventListener('url', ({ url: incoming }) => {
+      if (incoming?.startsWith('cozy:')) {
         console.log('[auth] captured cozy:// redirect via deep link')
-        done(() => resolve(normalizeRedirectUrl(incoming)))
+        finish(() => resolve(normalizeRedirectUrl(incoming)))
       }
     })
-
     WebBrowser.openBrowserAsync(url, { showInRecents: true }).then(
       () => {
-        // The Custom Tab was closed. If a cozy:// redirect already arrived this is
-        // a no-op; otherwise a close + redirect can race, so give the deep link a
-        // brief grace period before treating a genuine close as a user cancel.
-        setTimeout(() => done(() => reject(new UserCancelledError())), 500)
+        timer = setTimeout(() => finish(() => reject(new UserCancelledError())), 4000)
       },
-      (err: unknown) => done(() => reject(err as Error))
+      (err: unknown) => finish(() => reject(err as Error))
     )
   })
 }
