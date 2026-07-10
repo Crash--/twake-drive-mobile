@@ -99,27 +99,31 @@ final class FileProviderExtension: NSObject, NSFileProviderReplicatedExtension {
     let parent = dirId(for: itemTemplate.parentItemIdentifier)
     let name = itemTemplate.filename
     let isDir = itemTemplate.contentType == .folder
+    let progress = Progress(totalUnitCount: 100)
     Task {
       do {
         let api = try makeApi()
         let created: CozyFile
         if isDir {
           created = try await api.createDirectory(parentId: parent, name: name)
+          progress.completedUnitCount = progress.totalUnitCount
         } else {
           let mime = itemTemplate.contentType?.preferredMIMEType ?? "application/octet-stream"
           let file = try await api.createFile(parentId: parent, name: name, mime: mime)
           if let url {
-            created = try await api.upload(id: file.id, from: url, mime: mime)
+            created = try await api.upload(id: file.id, from: url, mime: mime, progress: progress)
           } else {
             created = file
+            progress.completedUnitCount = progress.totalUnitCount
           }
         }
         completionHandler(ItemMapper.item(from: created), [], false, nil)
       } catch {
+        progress.cancel()
         completionHandler(nil, [], false, Self.nsError(error))
       }
     }
-    return Progress()
+    return progress
   }
 
   // MARK: modify
@@ -132,6 +136,7 @@ final class FileProviderExtension: NSObject, NSFileProviderReplicatedExtension {
                   request: NSFileProviderRequest,
                   completionHandler: @escaping (NSFileProviderItem?, NSFileProviderItemFields, Bool, Error?) -> Void) -> Progress {
     let id = item.itemIdentifier.rawValue
+    let progress = Progress(totalUnitCount: 100)
     Task {
       do {
         let api = try makeApi()
@@ -144,14 +149,17 @@ final class FileProviderExtension: NSObject, NSFileProviderReplicatedExtension {
         }
         if changedFields.contains(.contents), let newContents {
           let mime = current.mime ?? item.contentType?.preferredMIMEType ?? "application/octet-stream"
-          current = try await api.upload(id: id, from: newContents, mime: mime)
+          current = try await api.upload(id: id, from: newContents, mime: mime, progress: progress)
+        } else {
+          progress.completedUnitCount = progress.totalUnitCount
         }
         completionHandler(ItemMapper.item(from: current), [], false, nil)
       } catch {
+        progress.cancel()
         completionHandler(nil, [], false, Self.nsError(error))
       }
     }
-    return Progress()
+    return progress
   }
 
   // MARK: delete

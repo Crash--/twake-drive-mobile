@@ -128,9 +128,15 @@ extension CozyFilesApi {
     return try parseData(data)
   }
 
-  func upload(id: String, from src: URL, mime: String) async throws -> CozyFile {
-    let bytes = try Data(contentsOf: src)
-    let data = try await send("/files/\(id)", method: .put, accept: true, contentType: mime, body: bytes)
+  func upload(id: String, from src: URL, mime: String, progress: Progress = Progress()) async throws -> CozyFile {
+    let path = "/files/\(id)"
+    var token = try await tokens.validAccessToken()
+    var (data, resp) = try await client.upload(try request(path, method: .put, token: token, accept: true, contentType: mime), fromFile: src, progress: progress)
+    if resp.statusCode == 401 {
+      token = try await tokens.forceRefresh(previous: token)
+      (data, resp) = try await client.upload(try request(path, method: .put, token: token, accept: true, contentType: mime), fromFile: src, progress: progress)
+    }
+    try Self.mapStatus(resp.statusCode)
     return try parseData(data)
   }
 
