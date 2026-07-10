@@ -1,5 +1,6 @@
 import React, { useState } from 'react'
 import { FlatList, StyleSheet, View } from 'react-native'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Appbar, Button, Portal, useTheme } from 'react-native-paper'
 import { useTranslation } from 'react-i18next'
 import { useClient, useQuery } from 'cozy-client'
@@ -53,6 +54,7 @@ export const FolderPicker = ({
 }: FolderPickerProps) => {
   const { t } = useTranslation()
   const theme = useTheme()
+  const insets = useSafeAreaInsets()
   const client = useClient()
   const [creatingFolder, setCreatingFolder] = useState(false)
 
@@ -158,7 +160,11 @@ export const FolderPicker = ({
         <View
           style={[
             styles.footer,
-            { backgroundColor: theme.colors.surfaceVariant, borderTopColor: theme.colors.outline }
+            {
+              backgroundColor: theme.colors.surfaceVariant,
+              borderTopColor: theme.colors.outline,
+              paddingBottom: insets.bottom + 12
+            }
           ]}
         >
           <Button mode="outlined" onPress={onCancel} style={styles.footerButton}>
