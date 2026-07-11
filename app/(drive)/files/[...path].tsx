@@ -137,9 +137,17 @@ export default function FilesScreen() {
   const handleCreate = async (name: string) => {
     if (!requireOnline(isOnline, setSnackbar, t)) return
     if (!client) throw new Error('No client')
-    await createFolder(client, name, currentDirId)
+    const created = await createFolder(client, name, currentDirId)
+    optimisticFiles(client, [
+      {
+        _id: created._id,
+        name: created.name,
+        dir_id: currentDirId,
+        type: 'directory',
+        _type: 'io.cozy.files'
+      }
+    ])
     setCreateFolderVisible(false)
-    await Promise.all([foldersQuery.fetch(), filesQuery.fetch()])
   }
 
   const handleCreateOffice = async (name: string) => {
@@ -147,8 +155,16 @@ export default function FilesScreen() {
     if (!client || !creatingClass) throw new Error('No client or class')
     const cls = creatingClass
     const created = await createOfficeFile(client, cls, name, currentDirId)
+    optimisticFiles(client, [
+      {
+        _id: created._id,
+        name: created.name,
+        dir_id: currentDirId,
+        type: 'file',
+        _type: 'io.cozy.files'
+      }
+    ])
     setCreatingClass(null)
-    await Promise.all([foldersQuery.fetch(), filesQuery.fetch()])
     router.push(`/onlyoffice/${created._id}`)
   }
 
@@ -157,7 +173,15 @@ export default function FilesScreen() {
     if (!client) return
     try {
       const created = await createCozyNote(client, currentDirId)
-      await Promise.all([foldersQuery.fetch(), filesQuery.fetch()])
+      optimisticFiles(client, [
+        {
+          _id: created._id,
+          name: created.name ?? '',
+          dir_id: currentDirId,
+          type: 'file',
+          _type: 'io.cozy.files'
+        }
+      ])
       router.push(`/note/${created._id}`)
     } catch (e) {
       console.error('[FilesScreen] note creation failed', e)
@@ -187,9 +211,17 @@ export default function FilesScreen() {
   const handleCreateShortcut = async (name: string, url: string): Promise<void> => {
     if (!requireOnline(isOnline, setSnackbar, t)) return
     if (!client) throw new Error('No client')
-    await createShortcut(client, currentDirId, name, url)
+    const created = await createShortcut(client, currentDirId, name, url)
+    optimisticFiles(client, [
+      {
+        _id: created._id,
+        name: created.name,
+        dir_id: currentDirId,
+        type: 'file',
+        _type: 'io.cozy.files'
+      }
+    ])
     setCreateShortcutVisible(false)
-    await Promise.all([foldersQuery.fetch(), filesQuery.fetch()])
   }
 
   const requestDelete = (entry: FileQueryResult): void => {
