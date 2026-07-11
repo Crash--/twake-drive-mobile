@@ -3,6 +3,8 @@ import { StyleSheet, View } from 'react-native'
 import { ProgressBar, useTheme } from 'react-native-paper'
 import { useClient } from 'cozy-client'
 
+import { clientEmitter } from '@/client/cozyClientInternals'
+
 export const SyncBanner = (): React.ReactElement | null => {
   const client = useClient()
   const theme = useTheme()
@@ -10,8 +12,7 @@ export const SyncBanner = (): React.ReactElement | null => {
 
   useEffect(() => {
     if (!client) return
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const c = client as any
+    const c = clientEmitter(client)
     const onStart = (): void => setSyncing(true)
     const onEnd = (): void => setSyncing(false)
     c.on('pouchlink:sync:start', onStart)

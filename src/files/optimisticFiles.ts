@@ -1,5 +1,7 @@
 import type CozyClient from 'cozy-client'
 
+import { clientStore } from '@/client/cozyClientInternals'
+
 const FILES = 'io.cozy.files'
 
 type Doc = { _id: string } & Record<string, unknown>
@@ -16,11 +18,8 @@ export const optimisticFiles = (
   docs: Doc[]
 ): (() => void) => {
   if (!client || docs.length === 0) return () => undefined
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const c = client as any
-  const originals = docs
-    .map(d => c.getDocumentFromState(FILES, d._id))
-    .filter((d: unknown): d is Doc => !!d)
+  const c = clientStore(client)
+  const originals = docs.map(d => c.getDocumentFromState(FILES, d._id)).filter((d): d is Doc => !!d)
   c.setData({ [FILES]: docs })
   return () => {
     if (originals.length > 0) c.setData({ [FILES]: originals })
