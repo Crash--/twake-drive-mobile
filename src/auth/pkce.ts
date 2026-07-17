@@ -31,20 +31,19 @@ export const normalizeRedirectUrl = (raw: string): string => {
   return url
 }
 
-export const openAuthorizeUrl = async (url: string): Promise<string> => {
-  console.log('[auth] opening authorize URL', url.split('?')[0])
-  const result = await WebBrowser.openAuthSessionAsync(url, REDIRECT_URL, {
-    showInRecents: false
-  })
-  if (result.type === 'success' && result.url) {
-    return normalizeRedirectUrl(result.url)
-  }
-  throw new UserCancelledError()
-}
-
-export const openLoginUrl = async (url: string): Promise<string> => {
-  console.log('[auth] opening login URL', url.split('?')[0])
-  return await new Promise<string>((resolve, reject) => {
+// Open `url` in the system browser (an external Custom Tab — an RFC 8252
+// user-agent with no access to the page's cookies or credentials) and resolve
+// with the cozy:// redirect captured as an OS deep link.
+//
+// We deliberately do NOT use WebBrowser.openAuthSessionAsync here: the auth
+// session cancels as soon as the app is backgrounded, and the flagship
+// email-code certification requires exactly that — the user must leave the tab
+// to read the 6-digit code from their mail and come back. On OIDC/LemonLDAP that
+// backgrounding aborted the authorize flow and bounced the user back to the
+// welcome screen. A plain Custom Tab stays open across the excursion, and the
+// deep-link listener catches the final cozy:// redirect at the OS level.
+const openViaSystemBrowser = (url: string): Promise<string> =>
+  new Promise<string>((resolve, reject) => {
     let settled = false
     let sub: ReturnType<typeof Linking.addEventListener> | undefined
     let timer: ReturnType<typeof setTimeout> | undefined
@@ -73,4 +72,13 @@ export const openLoginUrl = async (url: string): Promise<string> => {
       (err: unknown) => finish(() => reject(err as Error))
     )
   })
+
+export const openAuthorizeUrl = async (url: string): Promise<string> => {
+  console.log('[auth] opening authorize URL', url.split('?')[0])
+  return openViaSystemBrowser(url)
+}
+
+export const openLoginUrl = async (url: string): Promise<string> => {
+  console.log('[auth] opening login URL', url.split('?')[0])
+  return openViaSystemBrowser(url)
 }

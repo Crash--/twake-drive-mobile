@@ -60,21 +60,48 @@ describe('openLoginUrl (shared-jar Custom Tab)', () => {
   })
 })
 
-describe('openAuthorizeUrl (native auth session)', () => {
-  beforeEach(() => jest.clearAllMocks())
+describe('openAuthorizeUrl (system browser — survives the email-code excursion)', () => {
+  let urlHandler: (e: { url: string }) => void
+  let remove: jest.Mock
 
-  it('opens openAuthSessionAsync and returns the cozy:// redirect on success', async () => {
-    wb.openAuthSessionAsync.mockResolvedValueOnce({ type: 'success', url: 'cozy://?code=abc' })
-    await expect(openAuthorizeUrl('https://x/auth/authorize')).resolves.toBe('cozy://?code=abc')
-    expect(wb.openAuthSessionAsync).toHaveBeenCalledWith('https://x/auth/authorize', 'cozy://', {
-      showInRecents: false
-    })
+  beforeEach(() => {
+    jest.clearAllMocks()
+    remove = jest.fn()
+    linking.addEventListener.mockImplementation(
+      (_evt: string, cb: (e: { url: string }) => void) => {
+        urlHandler = cb
+        return { remove }
+      }
+    )
+    wb.dismissBrowser.mockReturnValue(undefined)
   })
 
-  it('rejects UserCancelledError when the session is cancelled', async () => {
-    wb.openAuthSessionAsync.mockResolvedValueOnce({ type: 'cancel' })
-    await expect(openAuthorizeUrl('https://x/auth/authorize')).rejects.toBeInstanceOf(
-      UserCancelledError
-    )
+  // The flagship certification makes the user leave the tab to read a 6-digit
+  // code from their mail and come back. openAuthSessionAsync cancels when the app
+  // is backgrounded, aborting login on OIDC/LemonLDAP — so the authorize flow must
+  // use the plain external Custom Tab + a deep-link listener (like openLoginUrl),
+  // which survives the excursion while staying an external user-agent (RFC 8252).
+  it('opens openBrowserAsync (external Custom Tab), never an auth session', () => {
+    wb.openBrowserAsync.mockReturnValue(new Promise(() => undefined))
+    void openAuthorizeUrl('https://x/auth/authorize')
+    expect(wb.openBrowserAsync).toHaveBeenCalledWith('https://x/auth/authorize', {
+      showInRecents: true
+    })
+    expect(wb.openAuthSessionAsync).not.toHaveBeenCalled()
+  })
+
+  it('resolves with the cozy:// redirect captured via the deep-link listener', async () => {
+    wb.openBrowserAsync.mockReturnValue(new Promise(() => undefined))
+    const p = openAuthorizeUrl('https://x/auth/authorize')
+    urlHandler({ url: 'cozy://?code=abc' })
+    await expect(p).resolves.toBe('cozy://?code=abc')
+    expect(remove).toHaveBeenCalled()
+  })
+
+  it('lets a redirect win over a racing tab-close', async () => {
+    wb.openBrowserAsync.mockResolvedValue({ type: 'cancel' })
+    const p = openAuthorizeUrl('https://x/auth/authorize')
+    urlHandler({ url: 'cozy://?code=win' })
+    await expect(p).resolves.toBe('cozy://?code=win')
   })
 })
