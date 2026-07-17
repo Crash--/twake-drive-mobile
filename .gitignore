@@ -51,3 +51,8 @@ gcp-service-account*.json
 /android/local.properties
 .claude/
 .superpowers/
+
+# Internal docs — design specs, implementation plans, CI/release runbooks and
+# TODOs are kept local; only the public end-to-end testing guide is tracked.
+/docs/*
+!/docs/e2e-testing.md

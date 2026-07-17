@@ -79,8 +79,9 @@ or the iOS simulator — see **[docs/e2e-testing.md](docs/e2e-testing.md)**.
 
 Signed releases are cut from a `vX.Y.Z` git tag, which triggers the fastlane
 pipeline: **iOS → TestFlight** (match) and **Android → Firebase App Distribution**
-(and optionally Play internal). See
-**[docs/ci-cd-signed-release.md](docs/ci-cd-signed-release.md)**.
+(and optionally Play internal). The detailed release/CI runbooks are maintained
+internally (they reference project-specific infrastructure) and kept out of the
+repository.
 
 ```bash
 scripts/release.sh 0.2.2   # bump package.json/app.json, commit, tag, push → release
@@ -94,7 +95,7 @@ src/            cozy queries, files logic, UI components, auth, offline, i18n
 android/        committed native Android project (+ DocumentsProvider)
 ios/            committed native iOS project (+ Share & File Provider extensions)
 e2e/maestro/    Maestro end-to-end flows and shared subflows
-docs/           runbooks (CI/CD, signed release, E2E) and design specs
+docs/           the public end-to-end testing guide
 scripts/        release + native signing helpers
 ```
 
