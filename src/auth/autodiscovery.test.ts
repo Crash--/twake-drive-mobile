@@ -96,16 +96,21 @@ describe('getLoginUri', () => {
 describe('getTwakeWorkplaceLoginUri', () => {
   // The Twake Workplace consumer sign-up / sign-in host is sign-up.twake.app
   // (hyphenated) — NOT signup.twake.app.
-  it('targets the sign-up.twake.app host with the cozy redirect (sign-in)', () => {
+  it('lands on the login screen in sign-in mode, keeping the cozy redirect', () => {
     const uri = getTwakeWorkplaceLoginUri('signin')
     expect(uri.host).toBe('sign-up.twake.app')
     expect(uri.searchParams.get('redirect_after_oidc')).toBe('cozy://')
-    expect(uri.searchParams.get('signup')).toBeNull()
+    expect(uri.searchParams.get('login')).toBe('true')
+    expect(uri.searchParams.get('register')).toBeNull()
+    expect(uri.searchParams.get('app')).toBe('twake-drive')
   })
 
-  it('adds signup=true in sign-up mode (same host)', () => {
+  it('lands on the register screen in sign-up mode, keeping the cozy redirect', () => {
     const uri = getTwakeWorkplaceLoginUri('signup')
     expect(uri.host).toBe('sign-up.twake.app')
-    expect(uri.searchParams.get('signup')).toBe('true')
+    expect(uri.searchParams.get('redirect_after_oidc')).toBe('cozy://')
+    expect(uri.searchParams.get('register')).toBe('true')
+    expect(uri.searchParams.get('login')).toBeNull()
+    expect(uri.searchParams.get('app')).toBe('twake-drive')
   })
 })
