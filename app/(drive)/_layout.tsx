@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react'
-import { Tabs } from 'expo-router'
+import { Redirect, Tabs } from 'expo-router'
 import { useTheme } from 'react-native-paper'
 import { useTranslation } from 'react-i18next'
 import { useClient } from 'cozy-client'
@@ -11,6 +11,12 @@ import { useSyncInstanceLocale } from '@/i18n/useSyncInstanceLocale'
 import { initOfflineSubsystem } from '@/offline/initOffline'
 
 export default function DriveLayout() {
+  const client = useClient()
+  if (!client) return <Redirect href="/(auth)/welcome" />
+  return <DriveTabs />
+}
+
+function DriveTabs() {
   const theme = useTheme()
   const { t } = useTranslation()
   const client = useClient()

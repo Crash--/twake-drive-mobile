@@ -21,18 +21,24 @@ jest.mock('expo-router', () => {
   }
   MockTabs.Screen = MockTabsScreen
 
+  function MockRedirect({ href }: { href: string }) {
+    return <Text testID="redirect">{href}</Text>
+  }
+
   return {
     __esModule: true,
     Tabs: MockTabs,
+    Redirect: MockRedirect,
     useRouter: () => ({ back: jest.fn(), push: jest.fn(), replace: jest.fn() }),
     useLocalSearchParams: () => ({})
   }
 })
 
+let mockClient: unknown = {}
 jest.mock('cozy-client', () => ({
   __esModule: true,
   Q: () => ({ getById: () => ({}) }),
-  useClient: () => null,
+  useClient: () => mockClient,
   useQuery: () => ({ data: null, fetchStatus: 'loaded' })
 }))
 
@@ -54,6 +60,19 @@ import i18n from '@/i18n'
 const wrap = (ui: React.ReactElement) => <PaperProvider>{ui}</PaperProvider>
 
 describe('DriveLayout — bottom tabs', () => {
+  beforeEach(() => {
+    mockClient = {}
+  })
+
+  it('redirects to the auth stack when there is no client (e.g. after logout)', () => {
+    // A logged-out client would otherwise reach useQuery with a null client and
+    // crash ("Cannot read property 'getState' of null"); the guard redirects first.
+    mockClient = null
+    render(wrap(<DriveLayout />))
+    expect(screen.getByTestId('redirect').props.children).toBe('/(auth)/welcome')
+    expect(screen.queryByTestId('tab-label')).toBeNull()
+  })
+
   it('renders exactly 5 visible tab labels', () => {
     render(wrap(<DriveLayout />))
     const tabs = screen.getAllByTestId('tab-label')
