@@ -52,9 +52,15 @@ export const getLoginUri = async (email: string): Promise<URL | null> => {
   return flagshipUri ? buildLoginUri(flagshipUri) : null
 }
 
+// Twake Workplace (sign-up.twake.app) picks its entry screen from its own intent
+// params: `login` → login screen, `register` → register screen; neither → the
+// landing/home page. It ignores `redirect_after_oidc`, so without an intent param
+// sign-in lands on the home page instead of the login form. The token still comes
+// back through our own `redirect_after_oidc=cozy://` deep-link, untouched here.
 export const getTwakeWorkplaceLoginUri = (mode: 'signin' | 'signup'): URL => {
   const uri = new URL(TWAKE_WORKPLACE_LOGIN_URL)
   uri.searchParams.append('redirect_after_oidc', REDIRECT_SCHEME)
-  if (mode === 'signup') uri.searchParams.append('signup', 'true')
+  uri.searchParams.append(mode === 'signup' ? 'register' : 'login', 'true')
+  uri.searchParams.append('app', 'twake-drive')
   return uri
 }
