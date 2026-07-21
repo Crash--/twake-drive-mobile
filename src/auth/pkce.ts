@@ -81,6 +81,19 @@ const openViaSystemBrowser = (url: string): Promise<string> =>
 
 export const openAuthorizeUrl = async (url: string): Promise<string> => {
   console.log('[auth] opening authorize URL', url.split('?')[0])
+  // The stack's /auth/authorize step usually redirects to cozy:// instantly with
+  // no UI. openAuthSessionAsync captures that native redirect reliably; the
+  // openBrowserAsync + deep-link path misses the instant custom-scheme redirect.
+  // This does not affect the Docs cookie jar — the Lemon SSO cookie is set during
+  // login (openLoginUrl / SFSafariViewController), not here.
+  const result = await WebBrowser.openAuthSessionAsync(url, REDIRECT_URL, { showInRecents: false })
+  if (result.type === 'success' && result.url) {
+    return normalizeRedirectUrl(result.url)
+  }
+  // An uncertified client shows the email-code form instead of redirecting; the
+  // user leaves to read the code, which aborts openAuthSessionAsync on refocus.
+  // Retry in the system browser, which survives the mail excursion.
+  console.log('[auth] auth session returned', result.type, '— falling back to system browser')
   return openViaSystemBrowser(url)
 }
 
