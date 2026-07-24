@@ -1,6 +1,6 @@
 import React, { useState } from 'react'
 import { StyleSheet, View } from 'react-native'
-import { Button, HelperText, Text, TextInput, useTheme } from 'react-native-paper'
+import { Button, HelperText, IconButton, Text, TextInput, useTheme } from 'react-native-paper'
 import { router } from 'expo-router'
 import { useTranslation } from 'react-i18next'
 import { SafeAreaView } from 'react-native-safe-area-context'
@@ -18,6 +18,11 @@ export default function LoginScreen() {
   const [email, setEmail] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+
+  const goBack = () => {
+    if (router.canGoBack()) router.back()
+    else router.replace('/(auth)/welcome')
+  }
 
   const onSubmit = async () => {
     setError(null)
@@ -44,6 +49,13 @@ export default function LoginScreen() {
   return (
     <SafeAreaView style={[styles.safe, { backgroundColor: theme.colors.background }]}>
       <View style={styles.container}>
+        <IconButton
+          icon="arrow-left"
+          size={24}
+          onPress={goBack}
+          accessibilityLabel={t('common.back')}
+          style={styles.back}
+        />
         <TwakeLogo size={44} />
 
         <View style={[styles.badge, { backgroundColor: theme.colors.primaryContainer }]}>
@@ -101,6 +113,7 @@ export default function LoginScreen() {
 const styles = StyleSheet.create({
   safe: { flex: 1 },
   container: { flex: 1, padding: 24 },
+  back: { alignSelf: 'flex-start', margin: 0, marginLeft: -8, marginBottom: 4 },
   badge: {
     alignSelf: 'flex-start',
     marginTop: 20,
