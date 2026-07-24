@@ -23,12 +23,19 @@ const resources = {
   ru: { translation: ru }
 }
 
-const deviceLocale = getLocales()[0]?.languageCode ?? undefined
-const lng = resolveLanguage(getLocalePreference(), deviceLocale, Object.keys(resources))
+// Cold-launch language: the user override, else the device locale, else English —
+// no instance locale (there is no logged-in account). Reused on logout to drop
+// the instance locale that useSyncInstanceLocale applied during the session.
+export const resolveDeviceLanguage = (): string =>
+  resolveLanguage(
+    getLocalePreference(),
+    getLocales()[0]?.languageCode ?? undefined,
+    Object.keys(resources)
+  )
 
 i18n.use(initReactI18next).init({
   resources,
-  lng,
+  lng: resolveDeviceLanguage(),
   fallbackLng: 'en',
   interpolation: { escapeValue: false }
 })
