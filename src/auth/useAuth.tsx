@@ -2,6 +2,7 @@ import React, { createContext, useCallback, useContext, useEffect, useMemo, useS
 import CozyClient from 'cozy-client'
 
 import { createClient } from '@/client/createClient'
+import i18n, { resolveDeviceLanguage } from '@/i18n'
 import { mirrorSessionToNative } from '@/native/twakeAuthBridge'
 import { clearSession, getSession, saveSession } from './tokenStorage'
 import { startOidcFlow } from './oidcFlow'
@@ -93,6 +94,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     })
     await clearSession()
     setState({ status: 'unauthenticated', client: null })
+    // Drop the instance locale that synced during the session; the login screen
+    // returns to the device language, like a cold launch.
+    void i18n.changeLanguage(resolveDeviceLanguage())
   }, [])
 
   const certifyFlagship = useCallback(async (): Promise<CozyClient> => {

@@ -43,6 +43,13 @@ jest.mock('cozy-flags', () => ({
   default: Object.assign(jest.fn(), { plugin: jest.fn() })
 }))
 
+jest.mock('@/i18n', () => ({
+  __esModule: true,
+  default: { changeLanguage: jest.fn() },
+  resolveDeviceLanguage: jest.fn(() => 'en')
+}))
+
+import i18n, { resolveDeviceLanguage } from '@/i18n'
 import * as tokenStorage from './tokenStorage'
 import * as oidcFlow from './oidcFlow'
 import * as autodiscovery from './autodiscovery'
@@ -166,6 +173,9 @@ describe('useAuth', () => {
 
     await waitFor(() => expect(screen.getByTestId('status')).toHaveTextContent('unauthenticated'))
     expect(clearSpy).toHaveBeenCalled()
+    // login screen returns to the device language, dropping the instance locale
+    expect(resolveDeviceLanguage).toHaveBeenCalled()
+    expect(i18n.changeLanguage).toHaveBeenCalledWith('en')
   })
 
   it('certifyFlagship calls the certifyFlagship module and saves the new session', async () => {
